@@ -125,7 +125,7 @@ export default function LoginForm() {
             </button>
           </div>
           <div className="text-right mt-1.5">
-            <Link href="/esqueci-senha" className="text-xs text-green-700 hover:underline font-medium">
+            <Link href="/recuperar-senha" className="text-xs text-green-700 hover:underline font-medium">
               Esqueci minha senha
             </Link>
           </div>
