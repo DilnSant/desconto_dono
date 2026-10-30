@@ -97,7 +97,7 @@ export default function RegisterForm() {
       {/* Header */}
       <div className="text-center mb-6">
         <Image
-          src="/images/logo.DDD2.jpeg"
+          src="/images/LogoTransp..png"
           alt="Desconto do Dono"
           width={1024}
           height={572}

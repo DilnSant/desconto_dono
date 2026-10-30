@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
@@ -8,23 +8,17 @@ import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { ADMIN_LOGIN_EMAIL, getAdminLoginErrorMessage } from '@/lib/auth/admin-login-message'
 
-export default function LoginForm() {
+interface LoginFormProps {
+  initialError?: string
+}
+
+export default function LoginForm({ initialError = '' }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(initialError)
   const router = useRouter()
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const err = params.get('erro')
-      if (err === 'oauth') {
-        setError('Falha ao autenticar com Google. Tente novamente.')
-      }
-    }
-  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -94,7 +88,7 @@ export default function LoginForm() {
       {/* Header */}
       <div className="text-center mb-8">
         <Image
-          src="/images/logo.DDD2.jpeg"
+          src="/images/LogoTransp..png"
           alt="Desconto do Dono"
           width={1024}
           height={572}

@@ -17,7 +17,7 @@ export default function Footer() {
           <div className="space-y-4">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
               <Image
-                src="/images/logo.DDD2.jpeg"
+                src="/images/LogoTransp..png"
                 alt="Desconto do Dono"
                 width={1024}
                 height={572}

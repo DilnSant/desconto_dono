@@ -16,7 +16,9 @@ export const metadata: Metadata = {
 
 
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
+  const { erro } = await searchParams
+  const errorCode = Array.isArray(erro) ? erro[0] : erro
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -33,7 +35,7 @@ export default async function LoginPage() {
         </div>
         <div className="relative text-center px-8 max-w-sm">
           <Image
-            src="/images/logo.DDD2.jpeg"
+            src="/images/LogoTransp..png"
             alt="Desconto do Dono"
             width={1024}
             height={572}
@@ -63,7 +65,11 @@ export default async function LoginPage() {
 
       {/* Painel direito — formulário */}
       <div className="flex-1 lg:max-w-[520px] flex items-center justify-center px-4 py-12 bg-gray-50">
-        <LoginForm />
+        <LoginForm
+          initialError={
+            errorCode === 'oauth' ? 'Falha ao autenticar com Google. Tente novamente.' : ''
+          }
+        />
       </div>
     </div>
   )

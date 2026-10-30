@@ -33,7 +33,7 @@ export default async function CadastroPage() {
         </div>
         <div className="relative text-center px-8 max-w-sm">
           <Image
-            src="/images/logo.DDD2.jpeg"
+            src="/images/LogoTransp..png"
             alt="Desconto do Dono"
             width={1024}
             height={572}

@@ -12,11 +12,10 @@ const inter = Inter({
   display: 'swap',
 })
 
-// URL base do domínio de produção (substitua pelo seu domínio personalizado na Vercel quando ativado)
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://descontododono.com.br'
+const siteUrl = 'https://www.descontododono.com.br'
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL('https://www.descontododono.com.br'),
   title: {
     default: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
     template: '%s | Desconto do Dono',
@@ -31,12 +30,12 @@ export const metadata: Metadata = {
   authors: [{ name: 'Desconto do Dono' }],
   creator: 'Desconto do Dono',
   icons: {
-    icon: '/images/logo.DDD2.jpeg',
+    icon: '/images/LogoTransp..png',
   },
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    url: siteUrl, // URL do domínio de produção (substitua pelo domínio real caso diferente)
+    url: siteUrl,
     title: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
     description:
       'A ponte que conecta os melhores empreendedores do Brasil. Networking e vantagens exclusivas.',

@@ -19,14 +19,8 @@ export default function RecuperarSenhaPage() {
     setLoading(true)
 
     try {
-      // URL de redirecionamento configurada no painel do Supabase (evita ERR_INVALID_REDIRECT)
-      const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      const redirectTo = isLocalhost
-        ? `${window.location.origin}/atualizar-senha`
-        : 'https://descontodono-5vcs9suh5-dilneysantosdeveloper-9816s-projects.vercel.app/atualizar-senha'
-
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo,
+        redirectTo: 'https://www.descontododono.com.br/atualizar-senha',
       })
 
       if (resetError) {
@@ -50,7 +44,7 @@ export default function RecuperarSenhaPage() {
         {/* Header / Logo */}
         <div className="text-center mb-6">
           <Image
-            src="/images/logo.DDD2.jpeg"
+            src="/images/LogoTransp..png"
             alt="Desconto do Dono"
             width={1024}
             height={572}

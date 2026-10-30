@@ -33,7 +33,7 @@ export default function Header({ user, onSearch }: HeaderProps) {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
             <Image
-              src="/images/logo.DDD2.jpeg"
+              src="/images/LogoTransp..png"
               alt="Desconto do Dono"
               width={1024}
               height={572}
