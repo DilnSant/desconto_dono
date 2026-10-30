@@ -12,31 +12,47 @@ const inter = Inter({
   display: 'swap',
 })
 
+// URL base do domínio de produção (substitua pelo seu domínio personalizado na Vercel quando ativado)
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://descontododono.com.br'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
     template: '%s | Desconto do Dono',
   },
   description:
-    'Conectando empresas locais a consumidores através de vídeo marketing e descontos exclusivos.',
+    'A ponte que conecta os melhores empreendedores do Brasil. Networking e vantagens exclusivas.',
   keywords: [
     'desconto do dono', 'clube de descontos', 'negócios locais', 'vídeo marketing',
     'empresas locais', 'descontos exclusivos', 'promoções', 'empreendedores brasileiros',
+    'networking empresarial',
   ],
   authors: [{ name: 'Desconto do Dono' }],
   creator: 'Desconto do Dono',
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    url: 'https://descontododono.com.br',
+    url: siteUrl, // URL do domínio de produção (substitua pelo domínio real caso diferente)
     title: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
-    description: 'Conectando empresas locais a consumidores através de vídeo marketing e descontos exclusivos.',
+    description:
+      'A ponte que conecta os melhores empreendedores do Brasil. Networking e vantagens exclusivas.',
     siteName: 'Desconto do Dono',
+    images: [
+      {
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
-    description: 'Conectando empresas locais a consumidores através de vídeo marketing e descontos exclusivos.',
+    description:
+      'A ponte que conecta os melhores empreendedores do Brasil. Networking e vantagens exclusivas.',
+    images: ['/opengraph-image.png'],
   },
   robots: { index: true, follow: true },
 }

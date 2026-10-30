@@ -215,11 +215,14 @@ Acesse: [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 🎨 Identidade Visual e Favicon
+## 🎨 Identidade Visual, Favicon e Open Graph (WhatsApp)
 
 A plataforma utiliza o novo branding **Desconto do Dono**:
 - **Favicon Dinâmico**: O arquivo `src/app/icon.tsx` gera nativamente no Next.js App Router um ícone com o 'D' dourado estilizado em fundo verde gradiente da marca.
 - **Substituição Manual do Favicon**: Se desejar substituir por um arquivo estático `.ico` personalizado de alta resolução, basta sobrescrever o arquivo `src/app/favicon.ico`.
+- **Card de Compartilhamento no WhatsApp e Redes (Open Graph)**:
+  - O projeto inclui o gerador dinâmico `src/app/opengraph-image.tsx` (1200x630) com o escudo dourado e branding oficial.
+  - **Como usar a sua imagem/logo personalizada**: Basta salvar a imagem da sua logomarca ou banner com o nome exato `opengraph-image.png` (ou `opengraph-image.jpg`) na pasta `src/app/` (ou em `public/opengraph-image.png`). O Next.js priorizará automaticamente o seu arquivo estático para as pré-visualizações do WhatsApp, Facebook, LinkedIn e Twitter.
 
 ---
 
