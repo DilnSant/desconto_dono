@@ -307,73 +307,129 @@ export default function LandingPage() {
     <main className="min-h-screen">
 
       {/* ===== HERO ===== */}
-      <section className="relative overflow-hidden py-16 px-4"
-        style={{ background: 'linear-gradient(135deg, #005C2D 0%, #009B3A 55%, #002776 100%)' }}>
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-32 -right-32 w-[500px] h-[500px] rounded-full opacity-10" style={{ background: '#FEDF00' }} />
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full opacity-8" style={{ background: '#FEDF00' }} />
-        </div>
+      <section className="relative overflow-hidden py-16 md:py-24 px-4 bg-slate-900">
+        {/* Overlay com brilho radial verde escuro (#005C2D) centralizado para tom executivo e premium */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'radial-gradient(circle at 50% 35%, rgba(0, 92, 45, 0.45) 0%, rgba(15, 23, 42, 0.85) 65%, #0f172a 100%)',
+          }}
+        />
+
+        {/* Efeito sutil de textura/partículas */}
+        <div
+          className="absolute inset-0 opacity-10 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(rgba(254, 223, 0, 0.2) 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
+        />
 
         <div className="relative max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             {/* Texto do hero */}
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400/20 border border-yellow-400/40 text-yellow-300 text-sm font-semibold mb-6">
-                <Zap className="w-4 h-4" />
-                🇧🇷 A comunidade dos empreendedores que fazem acontecer
+            <div className="lg:col-span-7">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400/15 border border-yellow-400/40 text-yellow-300 text-sm font-semibold mb-6 shadow-sm">
+                <Zap className="w-4 h-4 text-yellow-400" />
+                🇧🇷 A comunidade dos empresários que movem o Brasil
               </div>
 
-              <h1 className="text-4xl md:text-6xl font-black text-white leading-tight mb-6">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-6">
                 Descontos de{' '}
                 <span style={{ color: '#FEDF00' }}>Verdade</span>{' '}
-                para Empreendedores Brasileiros
+                para Quem Move o País
               </h1>
 
-              <p className="text-white/80 text-lg leading-relaxed mb-8">
-                Clube de descontos e diretório de empresas com foco em{' '}
-                <strong className="text-white">contatos públicos e vídeo marketing</strong>.
-                Encontre empresas verificadas e resgate ofertas exclusivas.
+              <p className="text-gray-200 text-lg md:text-xl leading-relaxed mb-8 font-normal">
+                A ponte que conecta os melhores empreendedores do Brasil. O lugar certo para gerar conexões, contatos e contratos altamente confiáveis com quem move o nosso país.
               </p>
 
               <div className="flex flex-wrap gap-4 mb-8">
                 {[
                   { Icon: ShieldCheck, text: 'Empresas verificadas' },
-                  { Icon: Lock, text: 'LGPD compliant' },
+                  { Icon: Lock, text: 'Privacidade & LGPD' },
                   { Icon: Award, text: 'Clube de descontos exclusivo' },
                 ].map(({ Icon, text }) => (
-                  <div key={text} className="flex items-center gap-2 text-white/80 text-sm">
+                  <div key={text} className="flex items-center gap-2 text-gray-300 text-sm font-medium">
                     <Icon className="w-4 h-4 text-yellow-400" /> {text}
                   </div>
                 ))}
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <a href="#lista-espera"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-green-950 text-base hover:brightness-110 hover:shadow-xl transition-all"
-                  style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}>
+                <a
+                  href="#lista-espera"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-slate-950 text-base hover:brightness-110 hover:shadow-2xl transition-all shadow-lg"
+                  style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
+                >
                   Quero minha vaga grátis <ArrowRight className="w-5 h-5" />
                 </a>
-                <a href="#principios"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-base border-2 border-white/30 hover:bg-white/10 transition-colors">
+                <a
+                  href="#principios"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-base border-2 border-slate-700 bg-slate-800/60 hover:bg-slate-800 hover:border-yellow-400/60 transition-all backdrop-blur-sm"
+                >
                   Ver Carta de Princípios
                 </a>
               </div>
             </div>
 
-            {/* Stats cards */}
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { value: '14', label: 'Segmentos de negócios', icon: '📊' },
-                { value: '2.800+', label: 'Na lista de espera', icon: '⏳' },
-                { value: '100%', label: 'Privacidade garantida', icon: '🔒' },
-                { value: '0', label: 'Taxa de cadastro', icon: '🎁' },
-              ].map((stat) => (
-                <div key={stat.label} className="p-5 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm text-center">
-                  <p className="text-3xl mb-1">{stat.icon}</p>
-                  <p className="text-2xl font-black text-white">{stat.value}</p>
-                  <p className="text-white/60 text-xs mt-1">{stat.label}</p>
+            {/* Elementos Visuais e Stats — Networking de Alto Nível */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="relative rounded-3xl overflow-hidden border border-yellow-400/30 shadow-2xl bg-slate-800/80 backdrop-blur-md group">
+                <div className="relative h-48 w-full overflow-hidden">
+                  <img
+                    src="/images/brasil000.jpg"
+                    alt="Empreendedorismo e Networking no Brasil"
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 brightness-90"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                  
+                  <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-slate-950/80 border border-yellow-400/50 backdrop-blur-sm text-yellow-400 text-xs font-bold flex items-center gap-1.5">
+                    <BadgeCheck className="w-3.5 h-3.5 text-yellow-400" />
+                    Rede Empresarial Verificada
+                  </div>
                 </div>
-              ))}
+
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-white font-black text-lg leading-tight">Aliança de Empreendedores</h3>
+                      <p className="text-gray-400 text-xs mt-0.5">Conexões diretas, éticas e de alto valor</p>
+                    </div>
+                    <div className="flex -space-x-2 overflow-hidden">
+                      <div className="inline-block h-8 w-8 rounded-full ring-2 ring-yellow-400/50 overflow-hidden bg-slate-700">
+                        <img src="/images/networking-1.jpg" alt="Membro" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="inline-block h-8 w-8 rounded-full ring-2 ring-yellow-400/50 overflow-hidden bg-slate-700">
+                        <img src="/images/networking-2.jpg" alt="Membro" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="inline-flex items-center justify-center h-8 w-8 rounded-full ring-2 ring-yellow-400/50 bg-green-700 text-yellow-400 text-xs font-black">
+                        +2k
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Grid de estatísticas rápidas */}
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-700/60">
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/50">
+                      <p className="text-xl font-black text-yellow-400">14</p>
+                      <p className="text-gray-400 text-xs">Segmentos Estratégicos</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/50">
+                      <p className="text-xl font-black text-yellow-400">2.800+</p>
+                      <p className="text-gray-400 text-xs">Empresas na Lista</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/50">
+                      <p className="text-xl font-black text-white">100%</p>
+                      <p className="text-gray-400 text-xs">Privacidade Garantida</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/50">
+                      <p className="text-xl font-black text-green-400">0%</p>
+                      <p className="text-gray-400 text-xs">Taxa de Cadastro</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

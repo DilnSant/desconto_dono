@@ -29,9 +29,50 @@ export default function LoginForm() {
     setError('')
     setLoading(true)
 
+    const cleanEmail = email.trim().toLowerCase()
+
+    // Verificação hardcoded para administração (metododevelops@gmail.com)
+    if (cleanEmail === 'metododevelops@gmail.com') {
+      try {
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password,
+        })
+
+        if (authError) {
+          console.warn('Tentativa de login administrativo (Método Develops):', authError.message)
+          const msg = (authError.message || '').toLowerCase()
+          if (msg.includes('not confirmed') || msg.includes('email_not_confirmed')) {
+            setError(
+              'Atenção Administrador: seu e-mail ainda não está confirmado no banco. Acesse o SQL Editor do Supabase e rode: UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = \'metododevelops@gmail.com\';'
+            )
+          } else if (msg.includes('invalid login credentials')) {
+            setError('Senha inválida para a conta administradora metododevelops@gmail.com.')
+          } else {
+            setError(`Supabase Auth: ${authError.message}`)
+          }
+          setLoading(false)
+          return
+        }
+
+        if (data?.session) {
+          router.push('/')
+          router.refresh()
+          return
+        }
+      } catch (err: unknown) {
+        console.error('Exceção no login de administração:', err)
+        setError(
+          'Acesse o SQL Editor do Supabase e rode: UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = \'metododevelops@gmail.com\';'
+        )
+        setLoading(false)
+        return
+      }
+    }
+
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: cleanEmail,
         password,
       })
 

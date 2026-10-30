@@ -18,8 +18,11 @@ export default function RecuperarSenhaPage() {
     setLoading(true)
 
     try {
-      // URL absoluta dinâmica garantida para o Supabase Auth (evita ERR_INVALID_REDIRECT)
-      const redirectTo = `${window.location.origin}/atualizar-senha`
+      // URL de redirecionamento configurada no painel do Supabase (evita ERR_INVALID_REDIRECT)
+      const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      const redirectTo = isLocalhost
+        ? `${window.location.origin}/atualizar-senha`
+        : 'https://descontodono-5vcs9suh5-dilneysantosdeveloper-9816s-projects.vercel.app/atualizar-senha'
 
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo,

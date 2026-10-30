@@ -56,6 +56,7 @@ export default async function RootLayout({
         <main className="pb-20 md:pb-0">
           {children}
         </main>
+        <Footer />
         <BottomNav />
       </body>
     </html>
