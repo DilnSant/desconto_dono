@@ -1,6 +1,6 @@
 -- ============================================================
 -- DESCONTO DO DONO — Schema PostgreSQL v3 para Supabase
--- (Atualização de Ordem & Negócios → Desconto do Dono)
+-- (Esquema completo do banco — Desconto do Dono)
 -- ============================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

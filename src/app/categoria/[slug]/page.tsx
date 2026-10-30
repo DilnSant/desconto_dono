@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const cat = CATEGORIES_STATIC.find((c) => c.slug === slug)
   if (!cat) return { title: 'Categoria não encontrada' }
   return {
-    title: `${cat.name} — Classificados | Ordem & Negócios`,
+    title: `${cat.name} — Classificados | Desconto do Dono`,
     description: `Encontre os melhores serviços e produtos na categoria ${cat.name}. Empreendedores verificados em todo o Brasil.`,
   }
 }

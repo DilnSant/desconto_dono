@@ -131,7 +131,7 @@ export default function ChatWindow({ currentUserId, otherUser, listingId }: Chat
           <div className="flex items-center gap-1">
             {otherUser.is_verified && <Shield className="w-3 h-3 text-blue-300" />}
             <span className="text-white/70 text-xs">
-              {otherUser.is_verified ? 'Perfil Verificado' : 'Ordem & Negócios'}
+              {otherUser.is_verified ? 'Perfil Verificado' : 'Desconto do Dono'}
             </span>
           </div>
         </div>
@@ -158,7 +158,7 @@ export default function ChatWindow({ currentUserId, otherUser, listingId }: Chat
       <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border-b border-amber-100">
         <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
         <p className="text-xs text-amber-700">
-          Por sua segurança, negocie sempre pelo Ordem & Negócios. Não faça pagamentos externos.
+          Por sua segurança, negocie sempre pelo Desconto do Dono. Não faça pagamentos externos.
         </p>
       </div>
 

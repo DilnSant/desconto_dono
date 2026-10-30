@@ -1,7 +1,7 @@
 {
-  "name": "ordem-negocios",
+  "name": "desconto-dono",
   "version": "1.0.0",
-  "description": "Plataforma de networking e classificados B2B/B2C para empreendedores brasileiros",
+  "description": "Desconto do Dono — O Clube de Descontos e Negócios Locais",
   "private": true,
   "scripts": {
     "dev": "next dev",

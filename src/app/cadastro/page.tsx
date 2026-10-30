@@ -9,8 +9,8 @@ import RegisterForm from '@/components/auth/RegisterForm'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Cadastro — Ordem & Negócios',
-  description: 'Crie sua conta grátis e comece a divulgar seus serviços para empreendedores de todo o Brasil.',
+  title: 'Cadastro — Desconto do Dono',
+  description: 'Crie sua conta grátis e conecte seu negócio local a consumidores através de ofertas exclusivas.',
 }
 
 
@@ -33,7 +33,7 @@ export default async function CadastroPage() {
         <div className="relative text-center px-8 max-w-sm">
           <div className="w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl border-4 border-yellow-400/40"
             style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}>
-            <span className="text-yellow-400 text-3xl font-black">O&N</span>
+            <span className="text-yellow-400 text-3xl font-black">DD</span>
           </div>
           <h2 className="text-4xl font-black text-white mb-4 leading-tight">
             Junte-se a<br />

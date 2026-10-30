@@ -14,29 +14,29 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Ordem & Negócios — Networking B2B/B2C para Empreendedores',
-    template: '%s | Ordem & Negócios',
+    default: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
+    template: '%s | Desconto do Dono',
   },
   description:
-    'Conecte-se com empreendedores brasileiros, divulgue seus serviços e feche negócios com segurança. A plataforma B2B/B2C que o Brasil estava esperando.',
+    'Conectando empresas locais a consumidores através de vídeo marketing e descontos exclusivos.',
   keywords: [
-    'empreendedores brasileiros', 'classificados', 'networking', 'B2B', 'B2C',
-    'serviços', 'anúncios', 'negócios', 'ordem e negócios',
+    'desconto do dono', 'clube de descontos', 'negócios locais', 'vídeo marketing',
+    'empresas locais', 'descontos exclusivos', 'promoções', 'empreendedores brasileiros',
   ],
-  authors: [{ name: 'Ordem & Negócios' }],
-  creator: 'Ordem & Negócios',
+  authors: [{ name: 'Desconto do Dono' }],
+  creator: 'Desconto do Dono',
   openGraph: {
     type: 'website',
     locale: 'pt_BR',
-    url: 'https://ordemenegocios.com.br',
-    title: 'Ordem & Negócios — Networking B2B/B2C para Empreendedores',
-    description: 'Conecte-se com empreendedores brasileiros e impulsione seus negócios.',
-    siteName: 'Ordem & Negócios',
+    url: 'https://descontododono.com.br',
+    title: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
+    description: 'Conectando empresas locais a consumidores através de vídeo marketing e descontos exclusivos.',
+    siteName: 'Desconto do Dono',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Ordem & Negócios',
-    description: 'Networking e classificados para empreendedores brasileiros',
+    title: 'Desconto do Dono | O Clube de Descontos e Negócios Locais',
+    description: 'Conectando empresas locais a consumidores através de vídeo marketing e descontos exclusivos.',
   },
   robots: { index: true, follow: true },
 }

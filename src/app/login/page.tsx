@@ -9,8 +9,8 @@ import LoginForm from '@/components/auth/LoginForm'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Entrar — Ordem & Negócios',
-  description: 'Acesse sua conta Ordem & Negócios e comece a conectar negócios hoje mesmo.',
+  title: 'Entrar — Desconto do Dono',
+  description: 'Acesse sua conta Desconto do Dono e descubra ofertas exclusivas e negócios locais.',
 }
 
 
@@ -33,14 +33,14 @@ export default async function LoginPage() {
         <div className="relative text-center px-8 max-w-sm">
           <div className="w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl border-4 border-yellow-400/40"
             style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}>
-            <span className="text-yellow-400 text-3xl font-black">O&N</span>
+            <span className="text-yellow-400 text-3xl font-black">DD</span>
           </div>
           <h2 className="text-4xl font-black text-white mb-4 leading-tight">
             Bem-vindo ao<br />
-            <span style={{ color: '#FEDF00' }}>Ordem & Negócios</span>
+            <span style={{ color: '#FEDF00' }}>Desconto do Dono</span>
           </h2>
           <p className="text-white/70 text-base leading-relaxed">
-            A plataforma que conecta empreendedores brasileiros e impulsiona negócios de todo o Brasil.
+            O clube de descontos e negócios locais conectando você às melhores empresas.
           </p>
           <div className="mt-8 grid grid-cols-3 gap-4">
             {[

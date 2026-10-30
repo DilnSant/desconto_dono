@@ -48,10 +48,10 @@ export default function LoginForm() {
       <div className="text-center mb-8">
         <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg"
           style={{ background: 'linear-gradient(135deg, #009B3A, #005C2D)' }}>
-          <span className="text-yellow-400 text-xl font-black">O&N</span>
+          <span className="text-yellow-400 text-xl font-black">DD</span>
         </div>
         <h1 className="text-2xl font-black text-gray-900">Bem-vindo de volta!</h1>
-        <p className="text-gray-500 text-sm mt-1">Entre na sua conta Ordem & Negócios</p>
+        <p className="text-gray-500 text-sm mt-1">Entre na sua conta Desconto do Dono</p>
       </div>
 
       {/* Google Login */}

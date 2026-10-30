@@ -6,8 +6,8 @@ import * as LucideIcons from 'lucide-react'
 import { cn } from '@/lib/utils/helpers'
 
 export const metadata: Metadata = {
-  title: 'Categorias — Ordem & Negócios',
-  description: 'Explore todas as 14 categorias de serviços e produtos disponíveis na plataforma Ordem & Negócios.',
+  title: 'Categorias — Desconto do Dono',
+  description: 'Explore todas as 14 categorias de negócios locais e serviços disponíveis na plataforma Desconto do Dono.',
 }
 
 function getIcon(iconName: string, className?: string) {

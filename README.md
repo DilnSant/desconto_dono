@@ -198,7 +198,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 supabase/schema.sql → SQL Editor do Supabase
 ```
 
-**Para banco existente (Ordem & Negócios)** — execute apenas a migração:
+**Para banco existente (legado)** — execute a migração:
 ```
 supabase/schema_v3.sql → SQL Editor do Supabase
 ```
@@ -212,6 +212,14 @@ npm run dev
 ```
 
 Acesse: [http://localhost:3000](http://localhost:3000)
+
+---
+
+## 🎨 Identidade Visual e Favicon
+
+A plataforma utiliza o novo branding **Desconto do Dono**:
+- **Favicon Dinâmico**: O arquivo `src/app/icon.tsx` gera nativamente no Next.js App Router um ícone com o 'D' dourado estilizado em fundo verde gradiente da marca.
+- **Substituição Manual do Favicon**: Se desejar substituir por um arquivo estático `.ico` personalizado de alta resolução, basta sobrescrever o arquivo `src/app/favicon.ico`.
 
 ---
 
