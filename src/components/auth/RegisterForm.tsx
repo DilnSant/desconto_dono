@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Loader2, AlertCircle, ChevronDown, CheckCircle2 } from 'lucide-react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
 import { CATEGORIES_STATIC, ESTADOS_BR } from '@/lib/constants/categories'
@@ -95,10 +96,13 @@ export default function RegisterForm() {
     <div className="w-full max-w-md mx-auto">
       {/* Header */}
       <div className="text-center mb-6">
-        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #009B3A, #005C2D)' }}>
-          <span className="text-yellow-400 text-xl font-black">DD</span>
-        </div>
+        <Image
+          src="/images/logo.DDD2.jpeg"
+          alt="Desconto do Dono"
+          width={1024}
+          height={572}
+          className="h-12 w-auto mx-auto mb-4 object-contain"
+        />
         <h1 className="text-2xl font-black text-gray-900">Criar conta grátis</h1>
         <p className="text-gray-500 text-sm mt-1">Junte-se a milhares de empreendedores</p>
       </div>

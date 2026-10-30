@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Mail, Loader2, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 
 export default function RecuperarSenhaPage() {
@@ -48,12 +49,13 @@ export default function RecuperarSenhaPage() {
       <div className="w-full max-w-md bg-gray-800/95 border border-gray-700/80 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-sm">
         {/* Header / Logo */}
         <div className="text-center mb-6">
-          <div
-            className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center border-2 border-yellow-400 shadow-[0_0_15px_rgba(254,223,0,0.3)]"
-            style={{ background: 'radial-gradient(circle, #009B3A 0%, #005C2D 100%)' }}
-          >
-            <span className="text-yellow-400 text-lg font-black leading-none">DD</span>
-          </div>
+          <Image
+            src="/images/logo.DDD2.jpeg"
+            alt="Desconto do Dono"
+            width={1024}
+            height={572}
+            className="h-12 w-auto mx-auto mb-3 object-contain"
+          />
           <h1 className="text-2xl font-black text-white">Recuperar Senha</h1>
           <p className="text-gray-400 text-sm mt-1">
             Informe seu e-mail para receber as instruções de redefinição

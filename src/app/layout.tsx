@@ -30,6 +30,9 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Desconto do Dono' }],
   creator: 'Desconto do Dono',
+  icons: {
+    icon: '/images/logo.DDD2.jpeg',
+  },
   openGraph: {
     type: 'website',
     locale: 'pt_BR',

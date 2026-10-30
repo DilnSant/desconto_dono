@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import RegisterForm from '@/components/auth/RegisterForm'
@@ -31,10 +32,13 @@ export default async function CadastroPage() {
           <div className="absolute -bottom-20 -left-20 w-80 h-80 rounded-full opacity-10" style={{ background: '#FEDF00' }} />
         </div>
         <div className="relative text-center px-8 max-w-sm">
-          <div className="w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl border-4 border-yellow-400/40"
-            style={{ background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(12px)' }}>
-            <span className="text-yellow-400 text-3xl font-black">DD</span>
-          </div>
+          <Image
+            src="/images/logo.DDD2.jpeg"
+            alt="Desconto do Dono"
+            width={1024}
+            height={572}
+            className="w-40 h-auto mx-auto mb-6 object-contain"
+          />
           <h2 className="text-4xl font-black text-white mb-4 leading-tight">
             Junte-se a<br />
             <span style={{ color: '#FEDF00' }}>12.500+</span> empreendedores

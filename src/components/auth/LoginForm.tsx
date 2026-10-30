@@ -4,7 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
+import { ADMIN_LOGIN_EMAIL, getAdminLoginErrorMessage } from '@/lib/auth/admin-login-message'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
@@ -31,45 +33,6 @@ export default function LoginForm() {
 
     const cleanEmail = email.trim().toLowerCase()
 
-    // Verificação hardcoded para administração (metododevelops@gmail.com)
-    if (cleanEmail === 'metododevelops@gmail.com') {
-      try {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
-        })
-
-        if (authError) {
-          console.warn('Tentativa de login administrativo (Método Develops):', authError.message)
-          const msg = (authError.message || '').toLowerCase()
-          if (msg.includes('not confirmed') || msg.includes('email_not_confirmed')) {
-            setError(
-              'Atenção Administrador: seu e-mail ainda não está confirmado no banco. Acesse o SQL Editor do Supabase e rode: UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = \'metododevelops@gmail.com\';'
-            )
-          } else if (msg.includes('invalid login credentials')) {
-            setError('Senha inválida para a conta administradora metododevelops@gmail.com.')
-          } else {
-            setError(`Supabase Auth: ${authError.message}`)
-          }
-          setLoading(false)
-          return
-        }
-
-        if (data?.session) {
-          router.push('/')
-          router.refresh()
-          return
-        }
-      } catch (err: unknown) {
-        console.error('Exceção no login de administração:', err)
-        setError(
-          'Acesse o SQL Editor do Supabase e rode: UPDATE auth.users SET email_confirmed_at = NOW() WHERE email = \'metododevelops@gmail.com\';'
-        )
-        setLoading(false)
-        return
-      }
-    }
-
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
@@ -78,11 +41,20 @@ export default function LoginForm() {
 
       if (authError) {
         console.error('Erro de autenticação Supabase:', authError)
+        const adminMessage = getAdminLoginErrorMessage(cleanEmail, authError.message)
+        if (adminMessage) {
+          setError(adminMessage)
+          return
+        }
+
         let friendlyMessage = authError.message
 
         const msgLower = (authError.message || '').toLowerCase()
         if (msgLower.includes('invalid login credentials')) {
-          friendlyMessage = 'E-mail ou senha inválidos. Verifique os dados digitados.'
+          friendlyMessage =
+            cleanEmail === ADMIN_LOGIN_EMAIL
+              ? 'Senha inválida para a conta administradora metododevelops@gmail.com.'
+              : 'E-mail ou senha inválidos. Verifique os dados digitados.'
         } else if (msgLower.includes('email not confirmed')) {
           friendlyMessage = 'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada e spam para ativar sua conta antes de fazer login.'
         } else if (msgLower.includes('user not found')) {
@@ -92,7 +64,6 @@ export default function LoginForm() {
         }
 
         setError(friendlyMessage)
-        setLoading(false)
         return
       }
 
@@ -101,12 +72,12 @@ export default function LoginForm() {
         router.refresh()
       } else {
         setError('Sessão não pôde ser iniciada. Verifique se o e-mail foi confirmado.')
-        setLoading(false)
       }
     } catch (err: unknown) {
       console.error('Exceção ao fazer login:', err)
       const message = err instanceof Error ? err.message : 'Erro ao realizar login. Tente novamente.'
       setError(message)
+    } finally {
       setLoading(false)
     }
   }
@@ -122,10 +93,13 @@ export default function LoginForm() {
     <div className="w-full max-w-md mx-auto">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #009B3A, #005C2D)' }}>
-          <span className="text-yellow-400 text-xl font-black">DD</span>
-        </div>
+        <Image
+          src="/images/logo.DDD2.jpeg"
+          alt="Desconto do Dono"
+          width={1024}
+          height={572}
+          className="h-12 w-auto mx-auto mb-4 object-contain"
+        />
         <h1 className="text-2xl font-black text-gray-900">Bem-vindo de volta!</h1>
         <p className="text-gray-500 text-sm mt-1">Entre na sua conta Desconto do Dono</p>
       </div>

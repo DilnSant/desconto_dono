@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
 import { Search, Menu, X, MessageCircle, User, LogOut, Plus, Bell } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -31,18 +32,13 @@ export default function Header({ user, onSearch }: HeaderProps) {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <div className="flex flex-col items-center justify-center w-10 h-10 rounded-full border-2 border-yellow-400 shadow-[0_0_15px_rgba(254,223,0,0.4)] group-hover:shadow-[0_0_20px_rgba(254,223,0,0.6)] transition-all duration-300"
-              style={{ background: 'radial-gradient(circle, #009B3A 0%, #005C2D 100%)' }}>
-              <span className="text-yellow-400 text-[9px] font-black leading-none text-center">DD</span>
-            </div>
-            <div className="hidden sm:flex flex-col">
-              <span className="text-white font-black text-lg leading-tight tracking-tight drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">
-                Desconto
-              </span>
-              <span className="text-yellow-400 font-black text-sm leading-tight tracking-wide drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]">
-                do Dono
-              </span>
-            </div>
+            <Image
+              src="/images/logo.DDD2.jpeg"
+              alt="Desconto do Dono"
+              width={1024}
+              height={572}
+              className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105 sm:h-12"
+            />
           </Link>
 
           {/* Barra de pesquisa */}

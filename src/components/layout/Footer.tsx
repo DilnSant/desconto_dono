@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { ShieldCheck, ExternalLink } from 'lucide-react'
+import Image from 'next/image'
+import { ShieldCheck } from 'lucide-react'
 
 export default function Footer() {
   return (
@@ -15,26 +16,18 @@ export default function Footer() {
           {/* Coluna 1 — Sobre */}
           <div className="space-y-4">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center border-2 border-yellow-400/80 shadow-[0_0_15px_rgba(254,223,0,0.3)] transition-transform group-hover:scale-105"
-                style={{ background: 'radial-gradient(circle, #009B3A 0%, #005C2D 100%)' }}
-              >
-                <span className="text-yellow-400 text-xs font-black tracking-tight">DD</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-black text-white text-lg tracking-tight leading-tight">
-                  Desconto
-                </span>
-                <span className="font-black text-yellow-400 text-sm tracking-wide leading-tight">
-                  do Dono
-                </span>
-              </div>
+              <Image
+                src="/images/logo.DDD2.jpeg"
+                alt="Desconto do Dono"
+                width={1024}
+                height={572}
+                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
+              />
             </Link>
 
             <p className="text-gray-400 text-sm leading-relaxed">
-              Nossa missão é unir e fortalecer os empreendedores e empresários que movem o Brasil.
-              Uma plataforma independente de alta autoridade focada em conexões seguras, negócios locais,
-              vídeo marketing e benefícios exclusivos para impulsionar quem faz a economia nacional acontecer.
+              Conectamos empreendedores de direita para fortalecer negócios locais e transformar boas parcerias em contratos confiáveis.
+              Nossa plataforma aproxima quem produz, gera empregos e movimenta a economia brasileira.
             </p>
 
             <div className="flex items-center gap-2 text-xs text-green-400 font-semibold pt-1">
@@ -103,28 +96,30 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Base do Rodapé (Créditos - Fundo Dourado Escuro/Amarelo) */}
-      <div
-        className="w-full py-4 px-4 border-t border-yellow-600/40 text-center"
-        style={{ background: 'linear-gradient(90deg, #6B4900 0%, #B8860B 50%, #6B4900 100%)' }}
-      >
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6 text-sm text-yellow-100 font-medium">
-          <p className="text-yellow-100 text-xs sm:text-sm">
+      <div className="w-full border-t border-gray-800 bg-gray-950 px-4 py-4">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-4 text-sm md:grid-cols-[1fr_auto_1fr]">
+          <p className="text-center text-xs text-gray-400 md:text-left">
             © {new Date().getFullYear()} Desconto do Dono. Todos os direitos reservados.
           </p>
-          <span className="hidden md:inline text-yellow-300/60">•</span>
-          <p className="text-xs sm:text-sm text-white font-bold flex items-center justify-center gap-1.5">
-            Desenvolvido por Método Develops |{' '}
+          <p className="flex items-center justify-center gap-3 text-xs font-semibold text-gray-300 sm:text-sm">
+            <span className="shrink-0">Desenvolvido por:</span>
             <a
-              href="https://www.metododevelops.com.br"
+              href="https://metododevelops.com.br/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-yellow-200 hover:text-white underline font-extrabold transition-colors inline-flex items-center gap-1"
+              aria-label="Visite o site da Método Develops"
+              className="relative z-10 inline-flex items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
             >
-              www.metododevelops.com.br
-              <ExternalLink className="w-3.5 h-3.5 inline" />
+              <Image
+                src="/images/logoMetodoDev.png"
+                alt="Método Develops"
+                width={1535}
+                height={1024}
+                className="h-12 w-auto object-contain transition-transform duration-300 hover:scale-[1.6] cursor-pointer"
+              />
             </a>
           </p>
+          <span aria-hidden="true" className="hidden md:block" />
         </div>
       </div>
     </footer>
