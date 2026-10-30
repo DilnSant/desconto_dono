@@ -18,18 +18,23 @@ export default function RecuperarSenhaPage() {
     setLoading(true)
 
     try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      // URL absoluta dinâmica garantida para o Supabase Auth (evita ERR_INVALID_REDIRECT)
+      const redirectTo = `${window.location.origin}/atualizar-senha`
+
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${origin}/atualizar-senha`,
+        redirectTo,
       })
 
       if (resetError) {
+        console.error('Erro resetPasswordForEmail:', resetError)
         setError(resetError.message || 'Erro ao enviar e-mail de recuperação. Tente novamente.')
       } else {
         setSuccess(true)
       }
-    } catch {
-      setError('Ocorreu um erro inesperado. Tente novamente mais tarde.')
+    } catch (err: unknown) {
+      console.error('Exceção ao solicitar recuperação:', err)
+      const message = err instanceof Error ? err.message : 'Ocorreu um erro inesperado. Tente novamente mais tarde.'
+      setError(message)
     } finally {
       setLoading(false)
     }
@@ -87,9 +92,12 @@ export default function RecuperarSenhaPage() {
         ) : (
           <form onSubmit={handleResetPassword} className="space-y-4">
             {error && (
-              <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800 text-red-300 text-sm">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
+              <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-950/60 border border-red-800 text-red-300 text-sm">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div className="flex-1 text-left">
+                  <p className="font-semibold text-red-200 text-xs mb-0.5">Erro ao solicitar recuperação</p>
+                  <p className="text-xs text-red-300 leading-relaxed">{error}</p>
+                </div>
               </div>
             )}
 
@@ -141,4 +149,3 @@ export default function RecuperarSenhaPage() {
     </div>
   )
 }
-

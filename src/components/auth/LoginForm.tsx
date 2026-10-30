@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle } from 'lucide-react'
+import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 
 export default function LoginForm() {
@@ -14,25 +14,60 @@ export default function LoginForm() {
   const [error, setError] = useState('')
   const router = useRouter()
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const err = params.get('erro')
+      if (err === 'oauth') {
+        setError('Falha ao autenticar com Google. Tente novamente.')
+      }
+    }
+  }, [])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
 
-    if (error) {
-      setError(
-        error.message === 'Invalid login credentials'
-          ? 'E-mail ou senha inválidos.'
-          : 'Erro ao fazer login. Tente novamente.'
-      )
+      if (authError) {
+        console.error('Erro de autenticação Supabase:', authError)
+        let friendlyMessage = authError.message
+
+        const msgLower = (authError.message || '').toLowerCase()
+        if (msgLower.includes('invalid login credentials')) {
+          friendlyMessage = 'E-mail ou senha inválidos. Verifique os dados digitados.'
+        } else if (msgLower.includes('email not confirmed')) {
+          friendlyMessage = 'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada e spam para ativar sua conta antes de fazer login.'
+        } else if (msgLower.includes('user not found')) {
+          friendlyMessage = 'Usuário não cadastrado. Verifique o e-mail informado ou crie sua conta grátis.'
+        } else if (msgLower.includes('rate limit')) {
+          friendlyMessage = 'Muitas tentativas em sequência. Por favor, aguarde alguns instantes.'
+        }
+
+        setError(friendlyMessage)
+        setLoading(false)
+        return
+      }
+
+      if (data?.session) {
+        router.push('/')
+        router.refresh()
+      } else {
+        setError('Sessão não pôde ser iniciada. Verifique se o e-mail foi confirmado.')
+        setLoading(false)
+      }
+    } catch (err: unknown) {
+      console.error('Exceção ao fazer login:', err)
+      const message = err instanceof Error ? err.message : 'Erro ao realizar login. Tente novamente.'
+      setError(message)
       setLoading(false)
-      return
     }
-
-    router.push('/')
-    router.refresh()
   }
 
   const handleGoogleLogin = async () => {
@@ -80,9 +115,12 @@ export default function LoginForm() {
       {/* Formulário */}
       <form id="login-form" onSubmit={handleLogin} className="space-y-4">
         {error && (
-          <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-red-700 text-sm">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            {error}
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm animate-fade-in-up">
+            <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-red-800 text-xs mb-0.5">Não foi possível entrar</p>
+              <p className="text-xs text-red-700 leading-relaxed">{error}</p>
+            </div>
           </div>
         )}
 
