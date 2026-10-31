@@ -9,24 +9,41 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
-import { CATEGORIES_STATIC, ESTADOS_BR } from '@/lib/constants/categories'
+import { ESTADOS_BR } from '@/lib/constants/categories'
 import { getInitials } from '@/lib/utils/helpers'
-import type { ProfileWithCategory } from '@/types/database'
+import {
+  hydrateCategorySelection,
+  selectPrimaryCategory,
+  selectPrimarySubcategory,
+  toggleCategory,
+  toggleSubcategory,
+  type ProfileCategorySelection,
+} from '@/lib/profile/category-selection'
+import type { Category, Profile, Subcategory } from '@/types/database'
 
 export default function PerfilPage() {
   const router = useRouter()
-  const [profile, setProfile] = useState<ProfileWithCategory | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
+  const [categorySelection, setCategorySelection] = useState<ProfileCategorySelection>({
+    categoryIds: [],
+    subcategoryIds: [],
+    primaryCategoryId: null,
+    primarySubcategoryId: null,
+  })
 
   const [form, setForm] = useState({
     full_name: '', business_name: '', bio: '', city: '',
     state: '', website_url: '', instagram_url: '',
-    email_public: '', whatsapp: '', category_id: '', subcategory_id: '',
+    email_public: '', whatsapp: '',
   })
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -34,40 +51,83 @@ export default function PerfilPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
 
-  const selectedCategory = CATEGORIES_STATIC.find((c) => c.id === form.category_id)
-  const subcategories = selectedCategory?.subcategories || []
+  const subcategoryCategoryById = subcategories.reduce<Record<string, string>>((map, subcategory) => {
+    map[subcategory.id] = subcategory.category_id
+    return map
+  }, {})
 
   useEffect(() => {
+    let cancelled = false
+
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+      setLoading(true)
+      setError('')
 
-      const { data } = await db
-        .from('profiles')
-        .select('*, categories(*), subcategories(*)')
-        .eq('id', user.id)
-        .single()
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError) throw authError
+        if (!user) {
+          router.replace('/login')
+          return
+        }
 
-      if (data) {
-        setProfile(data as ProfileWithCategory)
+        const [profileResult, categoryResult, subcategoryResult] = await Promise.all([
+          db.from('profiles').select('*').eq('id', user.id).single(),
+          db.from('categories').select('*').order('name'),
+          db.from('subcategories').select('*').order('name'),
+        ])
+
+        if (profileResult.error) throw profileResult.error
+        if (categoryResult.error) throw categoryResult.error
+        if (subcategoryResult.error) throw subcategoryResult.error
+        if (!profileResult.data) throw new Error('PROFILE_NOT_FOUND')
+
+        const profileData: Profile = profileResult.data
+        const categoryData: Category[] = categoryResult.data ?? []
+        const subcategoryData: Subcategory[] = subcategoryResult.data ?? []
+        const parentBySubcategory = subcategoryData.reduce<Record<string, string>>((map, subcategory) => {
+          map[subcategory.id] = subcategory.category_id
+          return map
+        }, {})
+        const hydratedSelection = hydrateCategorySelection(profileData)
+        const validSelection = hydratedSelection.primaryCategoryId
+          ? selectPrimaryCategory(
+            hydratedSelection,
+            hydratedSelection.primaryCategoryId,
+            parentBySubcategory
+          )
+          : { ...hydratedSelection, primarySubcategoryId: null }
+
+        if (cancelled) return
+
+        setProfile(profileData)
+        setCategories(categoryData)
+        setSubcategories(subcategoryData)
+        setCategorySelection(validSelection)
         setForm({
-          full_name: data.full_name || '',
-          business_name: data.business_name || '',
-          bio: data.bio || '',
-          city: data.city || '',
-          state: data.state || '',
-          website_url: data.website_url || '',
-          instagram_url: data.instagram_url || '',
-          email_public: data.email_public || '',
-          whatsapp: data.whatsapp || '',
-          category_id: data.category_id || '',
-          subcategory_id: data.subcategory_id || '',
+          full_name: profileData.full_name || '',
+          business_name: profileData.business_name || '',
+          bio: profileData.bio || '',
+          city: profileData.city || '',
+          state: profileData.state || '',
+          website_url: profileData.website_url || '',
+          instagram_url: profileData.instagram_url || '',
+          email_public: profileData.email_public || '',
+          whatsapp: profileData.whatsapp || '',
         })
+      } catch (loadError) {
+        console.error('Falha ao carregar perfil:', loadError)
+        if (!cancelled) setError('Não foi possível carregar seu perfil. Tente novamente.')
+      } finally {
+        if (!cancelled) setLoading(false)
       }
-      setLoading(false)
     }
-    load()
-  }, [router])
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [router, loadAttempt])
 
   const handleImageSelect = (file: File, type: 'avatar' | 'cover') => {
     const url = URL.createObjectURL(file)
@@ -79,7 +139,7 @@ export default function PerfilPage() {
     const ext = file.name.split('.').pop()
     const path = `${userId}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
-    if (error) return null
+    if (error) throw new Error('PROFILE_IMAGE_UPLOAD_FAILED')
     const { data } = supabase.storage.from(bucket).getPublicUrl(path)
     return data.publicUrl
   }
@@ -87,20 +147,24 @@ export default function PerfilPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess(false)
     setSaving(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw authError
+      if (!user) {
+        setError('Sua sessão expirou. Entre novamente para salvar o perfil.')
+        return
+      }
 
-    let avatar_url = profile?.avatar_url
-    let cover_url = profile?.cover_url
+      let avatar_url = profile?.avatar_url ?? null
+      let cover_url = profile?.cover_url ?? null
 
-    if (avatarFile) avatar_url = await uploadImage(avatarFile, 'avatars', user.id) || avatar_url
-    if (coverFile) cover_url = await uploadImage(coverFile, 'covers', user.id) || cover_url
+      if (avatarFile) avatar_url = await uploadImage(avatarFile, 'avatars', user.id)
+      if (coverFile) cover_url = await uploadImage(coverFile, 'covers', user.id)
 
-    const { error: updateError } = await db
-      .from('profiles')
-      .update({
+      const profileUpdates: Partial<Profile> = {
         full_name: form.full_name,
         business_name: form.business_name || null,
         bio: form.bio || null,
@@ -110,20 +174,36 @@ export default function PerfilPage() {
         instagram_url: form.instagram_url || null,
         email_public: form.email_public || null,
         whatsapp: form.whatsapp || null,
-        category_id: form.category_id || null,
-        subcategory_id: form.subcategory_id || null,
+        category_ids: categorySelection.categoryIds,
+        subcategory_ids: categorySelection.subcategoryIds,
+        primary_category_id: categorySelection.primaryCategoryId,
+        primary_subcategory_id: categorySelection.primarySubcategoryId,
+        category_id: categorySelection.primaryCategoryId,
+        subcategory_id: categorySelection.primarySubcategoryId,
         avatar_url,
         cover_url,
-      })
-      .eq('id', user.id)
+      }
 
-    if (updateError) {
-      setError('Erro ao salvar perfil. Tente novamente.')
-    } else {
+      const { error: updateError } = await db
+        .from('profiles')
+        .update(profileUpdates)
+        .eq('id', user.id)
+
+      if (updateError) throw updateError
+
+      setProfile((current) => current ? { ...current, ...profileUpdates } : current)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+    } catch (saveError) {
+      console.error('Falha ao salvar perfil:', saveError)
+      setError(
+        saveError instanceof Error && saveError.message === 'PROFILE_IMAGE_UPLOAD_FAILED'
+          ? 'Não foi possível enviar a imagem. Verifique o arquivo e tente novamente.'
+          : 'Não foi possível salvar seu perfil. Tente novamente.'
+      )
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   if (loading) {
@@ -134,8 +214,22 @@ export default function PerfilPage() {
     )
   }
 
+  if (!profile) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <div role="alert" className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
+          <p>{error || 'Não foi possível carregar seu perfil.'}</p>
+          <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+            className="mt-4 rounded-lg bg-red-700 px-4 py-2 font-semibold text-white">
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const update = (field: string, value: string) =>
-    setForm((p) => ({ ...p, [field]: value, ...(field === 'category_id' ? { subcategory_id: '' } : {}) }))
+    setForm((current) => ({ ...current, [field]: value }))
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -246,32 +340,108 @@ export default function PerfilPage() {
         {/* ===== ÁREA DE ATUAÇÃO ===== */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
           <h2 className="font-black text-gray-800 text-lg">Área de Atuação</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="p-category" className="label-field">Categoria</label>
-              <div className="relative">
-                <select id="p-category" value={form.category_id} onChange={(e) => update('category_id', e.target.value)}
-                  className="input-field appearance-none pr-8">
-                  <option value="">Selecione</option>
-                  {CATEGORIES_STATIC.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
+          <p className="text-sm text-gray-500">
+            Selecione suas áreas e marque uma categoria e uma subcategoria principais.
+          </p>
+          {categories.length === 0 ? (
+            <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+              Nenhuma categoria está disponível no momento.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {categories.map((category) => {
+                const isCategorySelected = categorySelection.categoryIds.includes(category.id)
+                const categorySubcategories = subcategories.filter(
+                  (subcategory) => subcategory.category_id === category.id
+                )
+
+                return (
+                  <div key={category.id} className="rounded-2xl border border-gray-100 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <label htmlFor={`category-${category.id}`} className="flex items-center gap-3 font-semibold text-gray-800">
+                        <input
+                          id={`category-${category.id}`}
+                          type="checkbox"
+                          checked={isCategorySelected}
+                          onChange={(event) => setCategorySelection((current) => toggleCategory(
+                            current,
+                            category.id,
+                            event.target.checked,
+                            subcategoryCategoryById
+                          ))}
+                          className="h-4 w-4 accent-green-700"
+                        />
+                        {category.name}
+                      </label>
+                      <label htmlFor={`primary-category-${category.id}`} className="flex items-center gap-2 text-sm text-gray-600">
+                        <input
+                          id={`primary-category-${category.id}`}
+                          type="radio"
+                          name="primary-category"
+                          checked={categorySelection.primaryCategoryId === category.id}
+                          disabled={!isCategorySelected}
+                          onChange={() => setCategorySelection((current) => selectPrimaryCategory(
+                            current,
+                            category.id,
+                            subcategoryCategoryById
+                          ))}
+                          className="h-4 w-4 accent-green-700"
+                        />
+                        Principal
+                      </label>
+                    </div>
+
+                    {isCategorySelected && categorySubcategories.length > 0 && (
+                      <div className="ml-3 mt-4 space-y-3 border-l-2 border-gray-100 pl-4">
+                        {categorySubcategories.map((subcategory) => {
+                          const isSubcategorySelected = categorySelection.subcategoryIds.includes(subcategory.id)
+
+                          return (
+                            <div key={subcategory.id} className="flex flex-wrap items-center justify-between gap-3">
+                              <label htmlFor={`subcategory-${subcategory.id}`} className="flex items-center gap-3 text-sm text-gray-700">
+                                <input
+                                  id={`subcategory-${subcategory.id}`}
+                                  type="checkbox"
+                                  checked={isSubcategorySelected}
+                                  onChange={(event) => setCategorySelection((current) => toggleSubcategory(
+                                    current,
+                                    subcategory.id,
+                                    event.target.checked,
+                                    subcategoryCategoryById
+                                  ))}
+                                  className="h-4 w-4 accent-green-700"
+                                />
+                                {subcategory.name}
+                              </label>
+                              <label htmlFor={`primary-subcategory-${subcategory.id}`} className="flex items-center gap-2 text-xs text-gray-500">
+                                <input
+                                  id={`primary-subcategory-${subcategory.id}`}
+                                  type="radio"
+                                  name="primary-subcategory"
+                                  checked={categorySelection.primarySubcategoryId === subcategory.id}
+                                  disabled={
+                                    !isSubcategorySelected
+                                    || categorySelection.primaryCategoryId !== category.id
+                                  }
+                                  onChange={() => setCategorySelection((current) => selectPrimarySubcategory(
+                                    current,
+                                    subcategory.id,
+                                    subcategoryCategoryById
+                                  ))}
+                                  className="h-4 w-4 accent-green-700"
+                                />
+                                Subcategoria principal
+                              </label>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-            {subcategories.length > 0 && (
-              <div>
-                <label htmlFor="p-subcategory" className="label-field">Subcategoria</label>
-                <div className="relative">
-                  <select id="p-subcategory" value={form.subcategory_id} onChange={(e) => update('subcategory_id', e.target.value)}
-                    className="input-field appearance-none pr-8">
-                    <option value="">Selecione</option>
-                    {subcategories.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         {/* ===== CONTATO ===== */}

@@ -2,9 +2,11 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState } from 'react'
-import { Search, Menu, X, MessageCircle, User, LogOut, Plus, Bell } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Search, Menu, X, MessageCircle, User, LogOut, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase/client'
+import { getCurrentUnreadCount, getUnreadCount, type UnreadCountState } from '@/lib/messages/unread-count'
 
 interface HeaderProps {
   user?: { id: string; email?: string } | null
@@ -14,7 +16,24 @@ interface HeaderProps {
 export default function Header({ user, onSearch }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [unreadMessages, setUnreadMessages] = useState<UnreadCountState | null>(null)
   const router = useRouter()
+  const userId = user?.id
+
+  useEffect(() => {
+    if (!userId) return
+
+    let active = true
+    getUnreadCount(supabase, userId).then((count) => {
+      if (active) setUnreadMessages({ userId, count })
+    })
+
+    return () => {
+      active = false
+    }
+  }, [userId])
+
+  const unreadCount = getCurrentUnreadCount(unreadMessages, userId)
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,21 +47,27 @@ export default function Header({ user, onSearch }: HeaderProps) {
       <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #009B3A 33%, #FEDF00 33%, #FEDF00 66%, #002776 66%)' }} />
 
       <div className="mx-auto max-w-7xl px-4 py-3">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 group">
+          <Link href="/" className="flex min-w-0 items-center gap-2 shrink-0 group">
             <Image
               src="/images/LogoTransp..png"
               alt="Desconto do Dono"
               width={1024}
               height={572}
-              className="h-10 w-auto object-contain transition-transform duration-300 group-hover:scale-105 sm:h-12"
+              className="h-13 w-auto shrink-0 object-contain transition-transform duration-300 group-hover:scale-105 sm:h-16"
             />
+            <span className="flex min-w-0 flex-col leading-tight">
+              <span className="text-sm font-bold text-white sm:text-lg">Desconto do Dono</span>
+              <span className="hidden text-xs text-white/80 sm:block">
+                Vantagens reais. Negócios locais.
+              </span>
+            </span>
           </Link>
 
           {/* Barra de pesquisa */}
-          <form onSubmit={handleSearch} className="flex-1 max-w-2xl">
+          <form onSubmit={handleSearch} className="order-3 w-full min-w-0 sm:order-none sm:flex-1 sm:max-w-2xl">
             <div className="relative group">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 group-focus-within:text-green-600 transition-colors" />
               <input
@@ -57,7 +82,7 @@ export default function Header({ user, onSearch }: HeaderProps) {
           </form>
 
           {/* Ações Desktop */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="order-2 ml-auto hidden items-center gap-2 md:flex">
             {user ? (
               <>
                 <Link
@@ -67,7 +92,10 @@ export default function Header({ user, onSearch }: HeaderProps) {
                   style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
                 >
                   <Plus className="w-4 h-4" />
-                  Anunciar
+                  <span className="flex flex-col items-start leading-tight">
+                    <span>Anunciar</span>
+                    <span className="text-[10px] font-bold">Gratuito</span>
+                  </span>
                 </Link>
                 <Link
                   href="/mensagens"
@@ -75,7 +103,14 @@ export default function Header({ user, onSearch }: HeaderProps) {
                   className="p-2 rounded-xl text-white hover:bg-white/20 transition-colors relative"
                 >
                   <MessageCircle className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                  {unreadCount !== null && unreadCount > 0 && (
+                    <span
+                      aria-label={`${unreadCount} mensagens não lidas`}
+                      className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white"
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
                 </Link>
                 <Link
                   href="/perfil"
@@ -121,7 +156,7 @@ export default function Header({ user, onSearch }: HeaderProps) {
           {/* Menu Mobile */}
           <button
             id="btn-menu-mobile"
-            className="md:hidden p-2 rounded-xl text-white hover:bg-white/20 transition-colors"
+            className="order-2 p-2 rounded-xl text-white hover:bg-white/20 transition-colors md:hidden"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Menu"
           >
@@ -137,7 +172,11 @@ export default function Header({ user, onSearch }: HeaderProps) {
                 <Link href="/anuncio/novo" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-green-900 font-semibold text-sm"
                   style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
                   onClick={() => setMenuOpen(false)}>
-                  <Plus className="w-4 h-4" /> Novo Anúncio
+                  <Plus className="w-4 h-4" />
+                  <span className="flex flex-col leading-tight">
+                    <span>Novo Anúncio</span>
+                    <span className="text-[10px] font-bold">Gratuito</span>
+                  </span>
                 </Link>
                 <Link href="/mensagens" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white hover:bg-white/20 transition-colors"
                   onClick={() => setMenuOpen(false)}>

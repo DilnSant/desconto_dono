@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { BadgeCheck, Calendar, Tag, ExternalLink, Percent, DollarSign } from 'lucide-react'
+import { BadgeCheck, Calendar, Tag, ExternalLink, Percent, DollarSign, MapPin } from 'lucide-react'
 import { getInitials } from '@/lib/utils/helpers'
 import LeadCaptureModal from '@/components/ui/LeadCaptureModal'
 import SponsorBanner from '@/components/ui/SponsorBanner'
@@ -36,6 +36,9 @@ type BenefitItem = {
   is_verified: boolean
   video_embed_url?: string | null
   link_url?: string | null
+  location_city?: string | null
+  location_state?: string | null
+  is_example?: boolean
 }
 
 interface BeneficiosFeedProps {
@@ -117,6 +120,12 @@ export default function BeneficiosFeed({ benefits }: BeneficiosFeedProps) {
 
                   <h3 className="font-black text-gray-900 text-sm leading-tight mb-2">{benefit.title}</h3>
                   <p className="text-gray-500 text-xs leading-relaxed flex-1 mb-4">{benefit.description}</p>
+                  {(benefit.location_city || benefit.location_state) && (
+                    <p className="mb-3 inline-flex items-center gap-1 text-xs text-gray-500">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      {[benefit.location_city, benefit.location_state].filter(Boolean).join(' - ')}
+                    </p>
+                  )}
 
                   {/* Autor */}
                   <div className="flex items-center gap-2 mb-4 pt-3 border-t border-gray-50">
@@ -155,7 +164,8 @@ export default function BeneficiosFeed({ benefits }: BeneficiosFeedProps) {
                         offerTitle: benefit.title,
                         businessName: benefit.business || benefit.author,
                       })}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs transition-all hover:brightness-110 hover:shadow-md"
+                      disabled={benefit.is_example === true}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs transition-all hover:brightness-110 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                       style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)', color: '#14532d' }}
                     >
                       🎁 Resgatar Desconto

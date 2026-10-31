@@ -15,6 +15,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16">
           {/* Coluna 1 — Sobre */}
           <div className="space-y-4">
+            <div className="flex flex-row items-center gap-6">
             <Link href="/" className="inline-flex items-center gap-2.5 group">
               <Image
                 src="/images/LogoTransp..png"
@@ -25,10 +26,10 @@ export default function Footer() {
               />
             </Link>
 
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Conectamos empreendedores de direita para fortalecer negócios locais e transformar boas parcerias em contratos confiáveis.
-              Nossa plataforma aproxima quem produz, gera empregos e movimenta a economia brasileira.
+            <p className="min-w-0 flex-1 text-gray-400 text-xs leading-relaxed sm:text-sm">
+              Conectamos empreendedores de direita para fortalecer negócios locais e transformar boas parcerias em contratos confiáveis. Nossa plataforma aproxima quem produz, gera empregos e movimenta a economia brasileira
             </p>
+            </div>
 
             <div className="flex items-center gap-2 text-xs text-green-400 font-semibold pt-1">
               <ShieldCheck className="w-4 h-4 text-green-400 shrink-0" />

@@ -79,7 +79,7 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: 'https://www.descontododono.com.br/auth/callback' },
     })
   }
 

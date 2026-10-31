@@ -74,6 +74,10 @@ export interface Database {
           cover_url: string | null
           category_id: string | null
           subcategory_id: string | null
+          category_ids: string[]
+          subcategory_ids: string[]
+          primary_category_id: string | null
+          primary_subcategory_id: string | null
           is_verified: boolean
           is_premium: boolean
           tiktok_url: string | null
@@ -97,6 +101,10 @@ export interface Database {
           cover_url?: string | null
           category_id?: string | null
           subcategory_id?: string | null
+          category_ids?: string[]
+          subcategory_ids?: string[]
+          primary_category_id?: string | null
+          primary_subcategory_id?: string | null
           is_verified?: boolean
           is_premium?: boolean
           tiktok_url?: string | null
@@ -120,6 +128,10 @@ export interface Database {
           cover_url?: string | null
           category_id?: string | null
           subcategory_id?: string | null
+          category_ids?: string[]
+          subcategory_ids?: string[]
+          primary_category_id?: string | null
+          primary_subcategory_id?: string | null
           is_verified?: boolean
           is_premium?: boolean
           created_at?: string
@@ -313,6 +325,8 @@ export interface Database {
           whatsapp: string | null
           video_embed_url: string | null
           category_id: string | null
+          location_city: string | null
+          location_state: string | null
           valid_until: string | null
           is_active: boolean
           redemptions: number
@@ -330,6 +344,8 @@ export interface Database {
           whatsapp?: string | null
           video_embed_url?: string | null
           category_id?: string | null
+          location_city?: string | null
+          location_state?: string | null
           valid_until?: string | null
           is_active?: boolean
           redemptions?: number
@@ -347,6 +363,8 @@ export interface Database {
           whatsapp?: string | null
           video_embed_url?: string | null
           category_id?: string | null
+          location_city?: string | null
+          location_state?: string | null
           valid_until?: string | null
           is_active?: boolean
           redemptions?: number

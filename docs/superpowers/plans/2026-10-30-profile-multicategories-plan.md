@@ -55,7 +55,7 @@ Use `node:test` to assert:
 
 - [ ] **Step 2: Run tests and verify failure**
 
-Run: `node --experimental-strip-types --test tests/profile-category-selection.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/profile-category-selection.test.mjs`
 Expected: FAIL because the selection helper does not exist.
 
 - [ ] **Step 3: Implement the pure selection helpers**
@@ -64,7 +64,7 @@ Use immutable arrays and a `Record<string, string>` map from subcategory UUID to
 
 - [ ] **Step 4: Run tests**
 
-Run: `node --experimental-strip-types --test tests/profile-category-selection.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/profile-category-selection.test.mjs`
 Expected: PASS.
 
 ### Task 2: Add profile schema and preserve existing selections
@@ -134,7 +134,7 @@ Update all existing profile fields plus `category_ids`, `subcategory_ids`, `prim
 
 - [ ] **Step 6: Run tests and inspect the form**
 
-Run: `node --test tests/profile-page-contract.test.mjs tests/profile-category-selection.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/profile-page-contract.test.mjs tests/profile-category-selection.test.mjs`
 Expected: PASS.
 Run: `npx tsc --noEmit`
 Expected: exit code 0. Inspect the authenticated profile at desktop and mobile widths; existing values are present and primary controls remain usable.

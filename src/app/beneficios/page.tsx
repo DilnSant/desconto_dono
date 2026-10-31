@@ -19,7 +19,7 @@ const MOCK_BENEFITS = [
     discount_pct: 30, discount_val: null, author: 'Carlos Mendes', business: 'TechPro BR',
     category: 'Desenvolvedores', valid_until: '2026-12-31', redemptions: 12,
     whatsapp: '11999999999', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null,
+    link_url: null, is_example: true,
   },
   {
     id: 'b2', title: 'Primeira Consultoria Financeira 100% Grátis',
@@ -27,7 +27,7 @@ const MOCK_BENEFITS = [
     discount_pct: 100, discount_val: null, author: 'Ana Rodrigues', business: 'FinancePro MG',
     category: 'Financeiras', valid_until: '2026-11-30', redemptions: 28,
     whatsapp: '31888888888', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null,
+    link_url: null, is_example: true,
   },
   {
     id: 'b3', title: '15% em Toda Publicidade Digital',
@@ -35,7 +35,7 @@ const MOCK_BENEFITS = [
     discount_pct: 15, discount_val: null, author: 'Pedro Lima', business: 'AdsMax PR',
     category: 'Marketing', valid_until: '2026-12-15', redemptions: 7,
     whatsapp: '41777777777', avatar_url: null, is_verified: false, video_embed_url: null,
-    link_url: null,
+    link_url: null, is_example: true,
   },
   {
     id: 'b4', title: 'Design de Logo Profissional — R$ 200 Off',
@@ -43,7 +43,7 @@ const MOCK_BENEFITS = [
     discount_pct: null, discount_val: 200, author: 'Juliana Souza', business: 'DesignHouse SP',
     category: 'Marketing', valid_until: '2026-11-15', redemptions: 4,
     whatsapp: '11666666666', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null,
+    link_url: null, is_example: true,
   },
   {
     id: 'b5', title: '20% Off em Planos de Academia',
@@ -51,7 +51,7 @@ const MOCK_BENEFITS = [
     discount_pct: 20, discount_val: null, author: 'Marcos Oliveira', business: 'FitZone Salvador',
     category: 'Lazer', valid_until: '2027-01-31', redemptions: 19,
     whatsapp: '71555555555', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null,
+    link_url: null, is_example: true,
   },
   {
     id: 'b6', title: 'Contabilidade MEI por R$ 59/mês',
@@ -59,7 +59,7 @@ const MOCK_BENEFITS = [
     discount_pct: null, discount_val: 40, author: 'Fernanda Costa', business: 'ContaFácil BA',
     category: 'Financeiras', valid_until: '2026-12-31', redemptions: 34,
     whatsapp: '71444444444', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null,
+    link_url: null, is_example: true,
   },
 ]
 

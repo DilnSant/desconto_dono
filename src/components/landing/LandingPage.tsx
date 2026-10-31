@@ -7,6 +7,7 @@ import {
   ShieldCheck, Award, BadgeCheck, CheckCircle2, Loader2,
   ArrowRight, Building2, Star, Lock, Zap, HelpCircle
 } from 'lucide-react'
+import { BRAZILIAN_UF_CODES } from '@/lib/waitlist/validation'
 
 // ============================================================
 // DADOS ESTÁTICOS — Carta de Princípios
@@ -66,11 +67,6 @@ const CATEGORIES_FORM = [
   { id: '11111111-0014-0014-0014-000000000014', name: 'Veículos' },
 ]
 
-const ESTADOS_BR = [
-  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG',
-  'PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO',
-]
-
 // Rankings mock (serão substituídos por dados reais)
 const MOCK_RANKING = [
   { city: 'São Paulo', state: 'SP', total: 847, companies_count: 312 },
@@ -89,12 +85,14 @@ const MOCK_RANKING = [
 function WaitlistForm() {
   const [form, setForm] = useState({
     full_name: '', email: '', city: '', state: '',
-    category_id: '', has_company: false, accepted_terms: false,
+    category_id: '', has_company: false, accepted_terms: false, website: '',
   })
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [position, setPosition] = useState<number | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [notice, setNotice] = useState('')
 
   const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
 
@@ -114,7 +112,10 @@ function WaitlistForm() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erro ao cadastrar')
-      setPosition(json.position)
+      if (json.success !== true) throw new Error('Não foi possível confirmar o cadastro.')
+      setPosition(typeof json.position === 'number' ? json.position : null)
+      setEmailSent(json.emailSent === true)
+      setNotice(typeof json.notice === 'string' ? json.notice : '')
       setSuccess(true)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao cadastrar. Tente novamente.')
@@ -130,12 +131,18 @@ function WaitlistForm() {
           <CheckCircle2 className="w-10 h-10 text-white" />
         </div>
         <h3 className="text-2xl font-black text-gray-900 mb-2">Você está na lista! 🎉</h3>
-        {position && (
+        {position !== null && (
           <div className="inline-block px-6 py-2 rounded-full mb-4 text-white font-black text-lg"
             style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)', color: '#1a1a1a' }}>
             #{position}º na fila da sua cidade
           </div>
         )}
+        <p role="status" aria-live="polite" className="text-gray-600 mb-2 max-w-sm mx-auto">
+          {emailSent
+            ? 'Enviamos um e-mail para confirmar o recebimento do seu cadastro.'
+            : 'Seu cadastro foi recebido, mas não foi possível enviar o e-mail de confirmação agora.'}
+        </p>
+        {notice && <p className="text-sm text-amber-700 mb-4">{notice}</p>}
         <p className="text-gray-600 mb-6 max-w-sm mx-auto">
           Quando sua cidade atingir o número mínimo de empreendedores, você receberá o convite por e-mail.
         </p>
@@ -148,6 +155,10 @@ function WaitlistForm() {
 
   return (
     <form id="waitlist-form" onSubmit={handleSubmit} className="space-y-4 p-6">
+      <input id="wl-website" name="website" type="text" value={form.website}
+        onChange={e => set('website', e.target.value)}
+        aria-hidden="true" tabIndex={-1} autoComplete="off"
+        className="sr-only" />
       <h3 className="text-xl font-black text-gray-900 mb-1">Entrar na Lista de Espera</h3>
       <p className="text-gray-500 text-sm mb-4">Cadastro 100% gratuito • Sem spam • Dados protegidos por LGPD</p>
 
@@ -175,7 +186,7 @@ function WaitlistForm() {
             onChange={e => set('state', e.target.value)}
             className="w-full appearance-none px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
             <option value="">Estado *</option>
-            {ESTADOS_BR.map(e => <option key={e} value={e}>{e}</option>)}
+            {BRAZILIAN_UF_CODES.map(e => <option key={e} value={e}>{e}</option>)}
           </select>
           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
         </div>
