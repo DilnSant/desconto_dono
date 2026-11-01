@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { X, Loader2, CheckCircle2, Phone, User, Tag } from 'lucide-react'
-import { db } from '@/lib/supabase/db'
+
+type LeadEmailStatus = 'sent' | 'skipped_no_public_email' | 'failed'
 
 interface LeadCaptureModalProps {
   offerId: string
@@ -21,6 +22,7 @@ export default function LeadCaptureModal({
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [emailStatus, setEmailStatus] = useState<LeadEmailStatus | null>(null)
 
   const formatWpp = (v: string) => v.replace(/\D/g, '').slice(0, 11)
 
@@ -30,24 +32,39 @@ export default function LeadCaptureModal({
       setError('Preencha seu nome e WhatsApp para resgatar.')
       return
     }
-    if (form.client_whatsapp.replace(/\D/g, '').length < 10) {
+    const clientWhatsapp = form.client_whatsapp.replace(/\D/g, '')
+    if (clientWhatsapp.length < 10 || clientWhatsapp.length > 11) {
       setError('WhatsApp inválido. Informe DDD + número.')
       return
     }
     setError('')
     setLoading(true)
     try {
-      const { error: dbErr } = await db.from('leads').insert({
-        offer_id: offerId,
-        client_name: form.client_name.trim(),
-        client_whatsapp: form.client_whatsapp.replace(/\D/g, ''),
+      const response = await fetch('/api/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offerId,
+          clientName: form.client_name.trim(),
+          clientWhatsapp,
+        }),
       })
-      if (dbErr) throw dbErr
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Erro ao registrar. Tente novamente.')
+      if (!['sent', 'skipped_no_public_email', 'failed'].includes(result.emailStatus)) {
+        throw new Error('Não foi possível confirmar o resultado do cadastro.')
+      }
+      setEmailStatus(result.emailStatus)
       setSuccess(true)
-    } catch {
-      setError('Erro ao registrar. Tente novamente.')
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : 'Erro ao registrar. Tente novamente.'
+      )
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -92,7 +109,19 @@ export default function LeadCaptureModal({
               </div>
               <h3 className="text-gray-900 font-black text-xl mb-2">Oferta Registrada! 🎉</h3>
               <p className="text-gray-500 text-sm leading-relaxed mb-6">
-                A empresa <strong className="text-gray-800">{businessName}</strong> vai entrar em contato pelo seu WhatsApp em breve.
+                {emailStatus === 'sent' ? (
+                  <>
+                    A empresa <strong className="text-gray-800">{businessName}</strong> foi notificada por e-mail e poderá entrar em contato pelo seu WhatsApp em breve.
+                  </>
+                ) : emailStatus === 'skipped_no_public_email' ? (
+                  <>
+                    Seu interesse foi registrado, mas a empresa <strong className="text-gray-800">{businessName}</strong> não tem um e-mail público cadastrado para receber o aviso. Não podemos garantir um contato pelo WhatsApp.
+                  </>
+                ) : (
+                  <>
+                    Seu interesse foi registrado, mas não conseguimos notificar a empresa <strong className="text-gray-800">{businessName}</strong> por e-mail agora. Não podemos garantir um contato pelo WhatsApp.
+                  </>
+                )}
               </p>
               <button
                 id="close-lead-success"
