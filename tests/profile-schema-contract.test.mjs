@@ -34,3 +34,12 @@ test('profile row, insert, and update types include all multi-select fields', ()
   assert.equal([...profileTypes.matchAll(/\bprimary_subcategory_id: string \| null/g)].length, 1)
   assert.equal([...profileTypes.matchAll(/\bprimary_subcategory_id\?: string \| null/g)].length, 2)
 })
+
+test('profile backfill skips legacy scalar columns that are absent', () => {
+  const schema = source('../supabase/schema_v4.sql')
+  const normalizedSchema = schema.replace(/\s+/g, ' ')
+
+  assert.match(normalizedSchema, /information_schema\.columns/i)
+  assert.match(normalizedSchema, /column_name = 'subcategory_id'/i)
+  assert.match(normalizedSchema, /execute \$migration\$/i)
+})

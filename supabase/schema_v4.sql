@@ -10,17 +10,41 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS primary_category_id UUID REFERENCES public.categories(id),
   ADD COLUMN IF NOT EXISTS primary_subcategory_id UUID REFERENCES public.subcategories(id);
 
-UPDATE public.profiles
-SET category_ids = ARRAY[category_id],
-    primary_category_id = COALESCE(primary_category_id, category_id)
-WHERE cardinality(category_ids) = 0
-  AND category_id IS NOT NULL;
+DO $backfill$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'profiles'
+      AND column_name = 'category_id'
+  ) THEN
+    EXECUTE $migration$
+      UPDATE public.profiles
+      SET category_ids = ARRAY[category_id],
+          primary_category_id = COALESCE(primary_category_id, category_id)
+      WHERE cardinality(category_ids) = 0
+        AND category_id IS NOT NULL
+    $migration$;
+  END IF;
 
-UPDATE public.profiles
-SET subcategory_ids = ARRAY[subcategory_id],
-    primary_subcategory_id = COALESCE(primary_subcategory_id, subcategory_id)
-WHERE cardinality(subcategory_ids) = 0
-  AND subcategory_id IS NOT NULL;
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'profiles'
+      AND column_name = 'subcategory_id'
+  ) THEN
+    EXECUTE $migration$
+      UPDATE public.profiles
+      SET subcategory_ids = ARRAY[subcategory_id],
+          primary_subcategory_id = COALESCE(primary_subcategory_id, subcategory_id)
+      WHERE cardinality(subcategory_ids) = 0
+        AND subcategory_id IS NOT NULL
+    $migration$;
+  END IF;
+END
+$backfill$;
 
 DROP POLICY IF EXISTS "waitlist_public_read" ON public.waitlist;
 DROP POLICY IF EXISTS "waitlist_public_insert" ON public.waitlist;
