@@ -95,6 +95,8 @@ function WaitlistForm() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [position, setPosition] = useState<number | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [notice, setNotice] = useState('')
 
   const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
 
@@ -115,6 +117,8 @@ function WaitlistForm() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erro ao cadastrar')
       setPosition(json.position)
+      setEmailSent(json.emailSent === true)
+      setNotice(typeof json.notice === 'string' ? json.notice : '')
       setSuccess(true)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao cadastrar. Tente novamente.')
@@ -136,6 +140,12 @@ function WaitlistForm() {
             #{position}º na fila da sua cidade
           </div>
         )}
+        <p className="text-gray-600 mb-2 max-w-sm mx-auto">
+          {emailSent
+            ? `Enviamos uma confirmação para ${form.email}.`
+            : 'Seu cadastro foi salvo, mas não conseguimos enviar o e-mail de confirmação agora.'}
+        </p>
+        {notice && <p className="text-sm text-amber-700 mb-2">{notice}</p>}
         <p className="text-gray-600 mb-6 max-w-sm mx-auto">
           Quando sua cidade atingir o número mínimo de empreendedores, você receberá o convite por e-mail.
         </p>
