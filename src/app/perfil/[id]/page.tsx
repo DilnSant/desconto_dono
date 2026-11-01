@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   BadgeCheck, Shield, Star, Globe, AtSign, Phone, Mail,
   MapPin, MessageCircle, Lock, Award, ArrowLeft, Calendar,
-  Video, Crown
+  Video
 } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getServerDb } from '@/lib/supabase/server-db'
@@ -14,6 +14,7 @@ import { CATEGORY_COLOR_MAP } from '@/lib/constants/categories'
 import ListingCard from '@/components/listings/ListingCard'
 import type { ListingWithProfile, ProfileWithCategory, PlanType } from '@/types/database'
 import { cn } from '@/lib/utils/helpers'
+import { normalizeStoredPlanType } from '@/lib/plans/entitlements'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -43,16 +44,12 @@ export const dynamic = 'force-dynamic'
 // Helper: Verifica permissões do plano
 // ============================================================
 function canShowContacts(plan: PlanType) {
-  return plan === 'Essencial' || plan === 'Profissional' || plan === 'Premium'
+  return plan === 'Essencial' || plan === 'Profissional'
 }
 function canShowVideo(plan: PlanType) {
-  return plan === 'Profissional' || plan === 'Premium'
-}
-function isPremium(plan: PlanType) {
-  return plan === 'Premium'
+  return plan === 'Profissional'
 }
 function maxVideos(plan: PlanType): number {
-  if (plan === 'Premium') return 3
   if (plan === 'Profissional') return 1
   return 0
 }
@@ -81,7 +78,7 @@ export default async function PublicProfilePage({ params }: Props) {
   const typedProfile = profile as ProfileWithCategory
   const listings = (listingsRaw || []) as ListingWithProfile[]
   const colors = CATEGORY_COLOR_MAP[typedProfile.categories?.color || 'neutral']
-  const plan = (typedProfile.plan_type as PlanType) || 'Gratuito'
+  const plan = normalizeStoredPlanType(typedProfile.plan_type || 'Gratuito')
 
   const whatsappLink = typedProfile.whatsapp
     ? formatWhatsAppLink(typedProfile.whatsapp, `Olá ${typedProfile.business_name || typedProfile.full_name}, vi seu perfil no Desconto do Dono!`)
@@ -98,9 +95,8 @@ export default async function PublicProfilePage({ params }: Props) {
     videoUrls.push(...lVideos)
   }
 
-  const isPremiumUser = isPremium(plan)
   const showContacts = canShowContacts(plan)
-  const isProfOrPremium = canShowVideo(plan)
+  const isProfessional = plan === 'Profissional'
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
@@ -129,7 +125,7 @@ export default async function PublicProfilePage({ params }: Props) {
       {/* ===== HERO DO PERFIL ===== */}
       <div className={cn(
         'bg-white rounded-3xl border shadow-sm overflow-hidden mb-6',
-        isProfOrPremium ? 'border-yellow-300 ring-2 ring-yellow-400' : 'border-gray-100'
+        isProfessional ? 'border-yellow-300 ring-2 ring-yellow-400' : 'border-gray-100'
       )}>
         {/* Capa */}
         <div className="relative h-48 md:h-64">
@@ -145,12 +141,10 @@ export default async function PublicProfilePage({ params }: Props) {
             <div className="absolute top-4 right-4">
               <span className={cn(
                 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black shadow-lg',
-                plan === 'Premium' ? 'text-white bg-gradient-to-r from-yellow-500 to-yellow-600' :
                 plan === 'Profissional' ? 'text-white bg-gradient-to-r from-blue-600 to-blue-700' :
                 'text-gray-800 bg-yellow-100'
               )}>
-                {plan === 'Premium' ? <Crown className="w-3 h-3" /> :
-                 plan === 'Profissional' ? <Video className="w-3 h-3" /> :
+                {plan === 'Profissional' ? <Video className="w-3 h-3" /> :
                  <Star className="w-3 h-3" />}
                 {plan}
               </span>
@@ -184,12 +178,6 @@ export default async function PublicProfilePage({ params }: Props) {
               <div>
                 <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
                   {typedProfile.business_name || typedProfile.full_name}
-                  {/* Selo BadgeCheck azul para Premium */}
-                  {isPremiumUser && (
-                    <span title="Empresa Verificada Premium" aria-label="Empresa Verificada Premium">
-                      <BadgeCheck className="w-7 h-7 text-blue-500" />
-                    </span>
-                  )}
                 </h1>
                 {typedProfile.business_name && (
                   <p className="text-gray-500">{typedProfile.full_name}</p>
@@ -246,11 +234,6 @@ export default async function PublicProfilePage({ params }: Props) {
             {typedProfile.is_verified && (
               <div className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full border text-blue-600 bg-blue-50 border-blue-200">
                 <BadgeCheck className="w-4 h-4" /> Verificado
-              </div>
-            )}
-            {isPremiumUser && (
-              <div className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full border text-yellow-700 bg-yellow-50 border-yellow-200">
-                <Crown className="w-4 h-4" /> Premium
               </div>
             )}
             {plan === 'Profissional' && (

@@ -101,7 +101,7 @@ export interface Database {
           is_premium?: boolean
           tiktok_url?: string | null
           public_whatsapp?: string | null
-          plan_type?: 'Gratuito' | 'Essencial' | 'Profissional' | 'Premium'
+          plan_type?: 'Gratuito' | 'Essencial' | 'Profissional'
           created_at?: string
           updated_at?: string
         }
@@ -381,8 +381,7 @@ export type Message = Database['public']['Tables']['messages']['Row']
 export type Conversation = Database['public']['Tables']['conversations']['Row']
 export type Lead = Database['public']['Tables']['leads']['Row']
 
-// Tipo helper para plan_type
-export type PlanType = 'Gratuito' | 'Essencial' | 'Profissional' | 'Premium'
+export type { PlanType } from '@/lib/plans/entitlements'
 
 // Tipos estendidos com joins
 export type CategoryWithSubs = Category & {

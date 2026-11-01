@@ -11,6 +11,7 @@ import { CATEGORY_COLOR_MAP } from '@/lib/constants/categories'
 import type { ProfileWithCategory } from '@/types/database'
 import type { PlanType } from '@/types/database'
 import { cn } from '@/lib/utils/helpers'
+import { normalizeStoredPlanType } from '@/lib/plans/entitlements'
 
 interface ProfileCardProps {
   profile: ProfileWithCategory
@@ -22,7 +23,6 @@ function PlanBadge({ plan }: { plan: PlanType }) {
     Gratuito:     { label: 'Gratuito', cls: 'text-gray-500 bg-gray-100 border-gray-200' },
     Essencial:    { label: 'Essencial', cls: 'text-blue-600 bg-blue-50 border-blue-200' },
     Profissional: { label: 'Profissional', cls: 'text-indigo-700 bg-indigo-50 border-indigo-200' },
-    Premium:      { label: 'Premium ★', cls: 'text-yellow-700 bg-yellow-50 border-yellow-300' },
   }
   const { label, cls } = map[plan] || map['Gratuito']
   return (
@@ -34,10 +34,10 @@ function PlanBadge({ plan }: { plan: PlanType }) {
 
 export default function ProfileCard({ profile, compact }: ProfileCardProps) {
   const colors = CATEGORY_COLOR_MAP[profile.categories?.color || 'neutral']
-  const plan = (profile as ProfileWithCategory & { plan_type?: PlanType }).plan_type || 'Gratuito'
-  const isProfessional = plan === 'Profissional' || plan === 'Premium'
+  const storedPlan = (profile as ProfileWithCategory & { plan_type?: string }).plan_type || 'Gratuito'
+  const plan = normalizeStoredPlanType(storedPlan)
+  const isProfessional = plan === 'Profissional'
   const isEssential = plan === 'Essencial' || isProfessional
-  const isPremium = plan === 'Premium'
 
   const whatsappLink = (isEssential && (profile as ProfileWithCategory & { public_whatsapp?: string }).public_whatsapp)
     ? formatWhatsAppLink(
@@ -53,7 +53,7 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
       id={`profile-${profile.id}`}
       className={cn(
         'bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden',
-        isPremium ? 'border-yellow-300 shadow-yellow-100/60 ring-1 ring-yellow-200' : 'border-gray-100'
+        'border-gray-100'
       )}
     >
       {/* Capa */}
@@ -62,20 +62,10 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
           <Image src={profile.cover_url} alt="Capa" fill className="object-cover" />
         ) : (
           <div className="w-full h-full" style={{
-            background: isPremium
-              ? 'linear-gradient(135deg, #FFB800 0%, #FEDF00 50%, #009B3A 100%)'
-              : 'linear-gradient(135deg, #009B3A 0%, #005C2D 50%, #002776 100%)'
+            background: 'linear-gradient(135deg, #009B3A 0%, #005C2D 50%, #002776 100%)'
           }} />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
-
-        {/* Badge Premium no canto */}
-        {isPremium && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-black uppercase"
-            style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)', color: '#14532d' }}>
-            <Star className="w-3 h-3" /> Premium
-          </div>
-        )}
       </div>
 
       {/* Avatar flutuante */}
@@ -96,8 +86,7 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
                 {getInitials(profile.business_name || profile.full_name)}
               </div>
             )}
-            {/* Ícone de verificado — apenas Profissional e Premium */}
-            {(profile.is_verified && isProfessional) && (
+            {profile.is_verified && (
               <div className="absolute -bottom-1.5 -right-1.5 bg-white rounded-full p-0.5 shadow">
                 <BadgeCheck className="w-5 h-5 text-blue-500" />
               </div>
@@ -139,12 +128,6 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
             <h3 className="font-black text-gray-900 text-base leading-tight">
               {profile.business_name || profile.full_name}
             </h3>
-            {/* Selo "Empresa Verificada" para Premium */}
-            {isPremium && profile.is_verified && (
-              <span title="Empresa Verificada" aria-label="Empresa Verificada">
-                <BadgeCheck className="w-5 h-5 text-blue-500 shrink-0" />
-              </span>
-            )}
           </div>
           {profile.business_name && (
             <p className="text-gray-500 text-sm">{profile.full_name}</p>
@@ -180,18 +163,11 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
 
         {/* Selos de verificação */}
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {profile.is_verified && isProfessional && (
+          {profile.is_verified && (
             <div title="Perfil verificado pela equipe Desconto do Dono"
               className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full border text-blue-600 bg-blue-50 border-blue-200">
               <BadgeCheck className="w-3 h-3" />
               <span>Verificado</span>
-            </div>
-          )}
-          {isPremium && (
-            <div title="Anunciante Premium com visibilidade ampliada"
-              className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full border text-yellow-600 bg-yellow-50 border-yellow-200">
-              <Star className="w-3 h-3" />
-              <span>Premium</span>
             </div>
           )}
           <div title="Negociações protegidas dentro da plataforma"
