@@ -129,6 +129,10 @@ anúncios por causa de cancelamento.
 - A galeria usa registros próprios ligados ao perfil e ao caminho no Storage,
   com ordenação definida pelo titular. Upload, exclusão e ativação devem
   verificar propriedade e cota no servidor/banco, não somente na interface.
+- O bucket de capas/galeria é privado. O servidor só gera URLs temporárias para
+  imagens ativas dentro da cota efetiva; o bucket de logomarcas permanece
+  público. URLs antigas de capa continuam armazenadas, mas a aplicação passa a
+  carregá-las por URLs assinadas, sem apagar os objetos.
 - O limite de anúncios conta registros ativos novos. A inserção deve ser
   validada de forma transacional para impedir ultrapassagem por chamadas
   concorrentes ou clientes modificados.
@@ -144,13 +148,18 @@ ou estatísticas fictícias. Sem resultados, exibir estado vazio e CTA real de
 cadastro.
 
 Remover a leitura pública irrestrita de `profiles`. Criar a view
-`profiles_public`, executada com privilégios do proprietário e com lista
-explícita de campos, e conceder leitura pública somente dessa view. A tabela
-base terá leitura própria para o titular; páginas públicas e joins usarão a
-view e nunca `select('*')` da tabela base. A projeção pode retornar
+`profiles_public`, executada com privilégios do proprietário, `security_barrier`
+e lista explícita de campos/linhas, e conceder leitura pública somente dessa
+view. A tabela base terá leitura própria para o titular; páginas públicas e
+joins usarão a view e nunca `select('*')` da tabela base. `cover_url` não será
+projetado; capas/galeria serão servidas por URLs assinadas e condicionadas ao
+plano efetivo. A projeção pode retornar
 e-mail/WhatsApp públicos apenas para Essencial/Profissional e segundo a
 assinatura efetiva. Consultas e joins de listagens também serão limitados aos
-campos públicos necessários.
+campos públicos necessários. Criar também `listings_public`, com lista fixa de
+campos de anúncio e filtro pelo plano efetivo no instante da consulta:
+anúncios legados ativos continuam elegíveis; anúncios novos respeitam a cota
+do plano e a seleção de downgrade ou o fallback dos anúncios mais recentes.
 
 Campos de plano, assinatura, verificação e isenção de anúncio legado não podem
 ser alterados por clientes. O webhook/rotas administrativas serão os únicos
@@ -177,9 +186,18 @@ processo.
 
 ### Regras comerciais e de estado
 
-- Somente cobrança mensal no lançamento; cartão, Pix e boleto via checkout
-  hospedado.
+- Somente cobrança mensal no lançamento via checkout hospedado; cartão e Pix
+  estão disponíveis. O checkout hospedado atual do Asaas não oferece boleto;
+  boleto fica fora desta etapa e exigirá uma decisão/fluxo separado no futuro.
 - Assinatura criada, mas ainda não paga, permanece Gratuito.
+- O evento Asaas `CHECKOUT_PAID`, autenticado e validado pelo estado atual do
+  checkout, confirma a contratação inicial. Eventos de pagamento e assinatura
+  sincronizam as renovações e mudanças seguintes. URLs de retorno do browser
+  nunca confirmam pagamento.
+- O plano efetivo é calculado em cada leitura/mutação protegida usando o status
+  e as datas atuais: cancelamento mantém o benefício até `current_period_end`;
+  atraso mantém até `grace_period_ends_at`. A expiração do prazo não depende da
+  chegada de um webhook posterior.
 - Cancelamento interrompe cobranças futuras e preserva benefícios até o fim do
   período já pago.
 - Cobrança vencida tem três dias de tolerância; depois, o plano efetivo volta
@@ -203,8 +221,9 @@ Antes de habilitar cobranças reais, o proprietário deverá:
    credenciais pela conversa nem usar prefixo `NEXT_PUBLIC_`.
 4. Aplicar a migration aditiva no SQL Editor do Supabase e conferir as políticas
    RLS.
-5. Validar o fluxo completo de contratação, confirmação, renovação, atraso,
-   cancelamento e reativação em sandbox antes de produção.
+5. Configurar os eventos de checkout, pagamento e assinatura necessários e
+   validar contratação, confirmação, renovação, atraso, cancelamento e
+   reativação em sandbox antes de produção.
 
 ## Lista de espera, e-mail e comunicação
 
@@ -216,9 +235,8 @@ obsoleta. Notificações de leads existentes continuam independentes.
 Atualizar textos legais e de contato para
 `faleconosco@descontododono.com.br`. Remover dados demonstrativos e promessas
 de crescimento/volume não verificadas da landing, cadastro, login, dashboard e
-benefícios. Atualizar documentação de configuração Resend para retirar
-`WAITLIST_FROM_EMAIL` se não houver outro consumidor; manter
-`RESEND_FROM_EMAIL` para notificações de leads ainda ativas.
+benefícios. A aplicação usa `RESEND_FROM_EMAIL` para notificações de leads;
+não há configuração de remetente para uma lista de espera encerrada.
 
 Remover do comportamento e das interfaces as referências a atualização de
 vídeo, galeria de vídeos, botão “Assistir vídeo”, métricas de tempo assistido e
@@ -242,8 +260,8 @@ repositório não tem migrations automatizadas. O script deve:
    públicas seguras; proteger plano, assinatura e verificação de escrita pelo
    cliente;
 6. estabelecer políticas de Storage e tabelas para que titulares alterem
-   somente seus próprios dados e a projeção pública exponha apenas campos
-   aprovados;
+   somente seus próprios dados, capas/galeria permaneçam em bucket privado e a
+   projeção pública exponha apenas campos aprovados;
 7. suportar downgrade preservando seleções, imagens e anúncios, com excesso
    não público/inativo conforme as regras deste documento; permitir escolha
    dos anúncios que permanecem ativos e aplicar o fallback dos mais recentes

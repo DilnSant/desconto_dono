@@ -40,12 +40,26 @@ const PLAN_ENTITLEMENTS: Readonly<Record<PlanType, PlanEntitlements>> = Object.f
   }),
 })
 
+const PLAN_MONTHLY_PRICE_CENTS: Readonly<Record<PlanType, number>> = Object.freeze({
+  Gratuito: 0,
+  Essencial: 3990,
+  Profissional: 5990,
+})
+
 export function getPlanEntitlements(plan: PlanType): PlanEntitlements {
   if (!Object.hasOwn(PLAN_ENTITLEMENTS, plan)) {
     throw new RangeError(`Unknown plan: ${String(plan)}`)
   }
 
   return PLAN_ENTITLEMENTS[plan]
+}
+
+export function getPlanMonthlyPriceCents(plan: PlanType): number {
+  if (!Object.hasOwn(PLAN_MONTHLY_PRICE_CENTS, plan)) {
+    throw new RangeError(`Unknown plan: ${String(plan)}`)
+  }
+
+  return PLAN_MONTHLY_PRICE_CENTS[plan]
 }
 
 export function normalizeStoredPlanType(value: string): PlanType {

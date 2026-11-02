@@ -24,6 +24,6 @@ test('privacy page documents lead data, Supabase, and LGPD contact', async () =>
   assert.match(html, /nome e o WhatsApp/)
   assert.match(html, /e-mail/)
   assert.match(html, /Supabase/)
-  assert.match(html, /desconto\.do\.dono@gmail\.com/)
+  assert.match(html, /faleconosco@descontododono\.com\.br/)
   assert.match(html, /Não vendemos/)
 })

@@ -10,43 +10,6 @@ async function loadEmailService() {
   return import(serviceUrl.href)
 }
 
-test('sends a waitlist confirmation from the configured sender with a stable idempotency key', async () => {
-  const { createResendEmailService } = await loadEmailService()
-  let sentMessage
-  let sentOptions
-  const service = createResendEmailService({
-    apiKey: 're_test',
-    from: sender,
-    clientFactory: (apiKey) => {
-      assert.equal(apiKey, 're_test')
-      return {
-        emails: {
-          send: async (message, options) => {
-            sentMessage = message
-            sentOptions = options
-            return { data: { id: 'email-1' }, error: null }
-          },
-        },
-      }
-    },
-  })
-
-  const result = await service.sendWaitlistConfirmation({
-    id: 'waitlist-123',
-    fullName: 'Maria Teste',
-    email: 'maria@example.com',
-    city: 'Belo Horizonte',
-    state: 'MG',
-  })
-
-  assert.deepEqual(result, { sent: true })
-  assert.equal(sentMessage.from, sender)
-  assert.deepEqual(sentMessage.to, ['maria@example.com'])
-  assert.equal(sentMessage.subject, 'Cadastro recebido com sucesso')
-  assert.match(sentMessage.text, /Maria Teste/)
-  assert.equal(sentOptions.idempotencyKey, 'waitlist-confirmation/waitlist-123')
-})
-
 test('sends a lead notification to the supplied database-derived recipient and escapes HTML values', async () => {
   const { createResendEmailService } = await loadEmailService()
   let sentMessage
@@ -90,15 +53,61 @@ test('reports missing Resend configuration without creating a client', async () 
     },
   })
 
-  const result = await service.sendWaitlistConfirmation({
-    id: 'waitlist-789',
-    fullName: 'João Teste',
-    email: 'joao@example.com',
-    city: 'Recife',
-    state: 'PE',
+  const result = await service.sendLeadNotification({
+    id: 'lead-789',
+    recipient: 'empresa@example.com',
+    benefitTitle: 'Oferta de teste',
+    clientName: 'João Teste',
+    clientWhatsapp: '81999998888',
   })
 
   assert.deepEqual(result, { sent: false, reason: 'not_configured' })
+})
+
+test('uses RESEND_FROM_EMAIL as the only sender setting for lead notifications', async () => {
+  const { createResendEmailService } = await loadEmailService()
+  const previousSender = process.env.RESEND_FROM_EMAIL
+  const previousWaitlistSender = process.env.WAITLIST_FROM_EMAIL
+  let sentMessage
+  process.env.RESEND_FROM_EMAIL = sender
+  process.env.WAITLIST_FROM_EMAIL = 'legacy@example.com'
+
+  try {
+    const service = createResendEmailService({
+      apiKey: 're_test',
+      clientFactory: () => ({
+        emails: {
+          send: async (message) => {
+            sentMessage = message
+            return { data: { id: 'email-3' }, error: null }
+          },
+        },
+      }),
+    })
+
+    const result = await service.sendLeadNotification({
+      id: 'lead-sender-config',
+      recipient: 'empresa@example.com',
+      benefitTitle: 'Oferta de teste',
+      clientName: 'Cliente',
+      clientWhatsapp: '31999998888',
+    })
+
+    assert.deepEqual(result, { sent: true })
+    assert.equal(sentMessage.from, sender)
+  } finally {
+    if (previousSender === undefined) delete process.env.RESEND_FROM_EMAIL
+    else process.env.RESEND_FROM_EMAIL = previousSender
+    if (previousWaitlistSender === undefined) delete process.env.WAITLIST_FROM_EMAIL
+    else process.env.WAITLIST_FROM_EMAIL = previousWaitlistSender
+  }
+})
+
+test('exports lead notifications without retaining waitlist confirmation behavior', async () => {
+  const emailModule = await loadEmailService()
+
+  assert.equal(typeof emailModule.sendLeadNotification, 'function')
+  assert.equal('sendWaitlistConfirmation' in emailModule, false)
 })
 
 test('reports provider errors without logging message personal data', async () => {
@@ -121,12 +130,12 @@ test('reports provider errors without logging message personal data', async () =
       }),
     })
 
-    const result = await service.sendWaitlistConfirmation({
-      id: 'waitlist-private',
-      fullName: 'Pessoa Privada',
-      email: 'maria-private@example.com',
-      city: 'São Paulo',
-      state: 'SP',
+    const result = await service.sendLeadNotification({
+      id: 'lead-private',
+      recipient: 'maria-private@example.com',
+      benefitTitle: 'Oferta privada',
+      clientName: 'Pessoa Privada',
+      clientWhatsapp: '11999998888',
     })
 
     assert.deepEqual(result, { sent: false, reason: 'provider_error' })

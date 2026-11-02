@@ -203,6 +203,9 @@ ALTER TABLE public.profile_gallery_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.asaas_webhook_events ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "waitlist_public_insert" ON public.waitlist;
+DROP POLICY IF EXISTS "waitlist_public_read" ON public.waitlist;
+
 REVOKE ALL ON public.profiles, public.listings, public.waitlist FROM PUBLIC, anon, authenticated;
 DO $$
 DECLARE

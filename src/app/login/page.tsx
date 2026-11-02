@@ -48,17 +48,11 @@ export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
           <p className="text-white/70 text-base leading-relaxed">
             O clube de descontos e negócios locais conectando você às melhores empresas.
           </p>
-          <div className="mt-8 grid grid-cols-3 gap-4">
-            {[
-              { value: '12k+', label: 'Usuários' },
-              { value: '48k+', label: 'Anúncios' },
-              { value: '14', label: 'Categorias' },
-            ].map((s) => (
-              <div key={s.label} className="p-3 rounded-2xl bg-white/10 border border-white/20">
-                <p className="text-2xl font-black text-yellow-400">{s.value}</p>
-                <p className="text-white/60 text-xs mt-0.5">{s.label}</p>
-              </div>
-            ))}
+          <div className="mt-8 rounded-2xl bg-white/10 border border-white/20 p-5 text-left">
+            <p className="text-yellow-300 font-bold mb-2">Sua rede começa com uma conversa.</p>
+            <p className="text-white/70 text-sm leading-relaxed">
+              Acesse seu perfil, encontre negócios e continue suas conversas na plataforma.
+            </p>
           </div>
         </div>
       </div>

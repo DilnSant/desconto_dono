@@ -64,6 +64,12 @@ export default function Header({ user, onSearch }: HeaderProps) {
             >
               Empresas
             </Link>
+            <Link
+              href="/planos"
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-300"
+            >
+              Planos
+            </Link>
             {user ? (
               <>
                 <Link
@@ -81,7 +87,6 @@ export default function Header({ user, onSearch }: HeaderProps) {
                   className="p-2 rounded-xl text-white hover:bg-white/20 transition-colors relative"
                 >
                   <MessageCircle className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
                 </Link>
                 <Link
                   href="/perfil"
@@ -144,6 +149,13 @@ export default function Header({ user, onSearch }: HeaderProps) {
               onClick={() => setMenuOpen(false)}
             >
               Empresas
+            </Link>
+            <Link
+              href="/planos"
+              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-white/20"
+              onClick={() => setMenuOpen(false)}
+            >
+              Planos
             </Link>
             {user ? (
               <>

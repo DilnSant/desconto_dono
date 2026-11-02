@@ -4,14 +4,6 @@ export type EmailDeliveryResult =
   | { sent: true }
   | { sent: false; reason: 'not_configured' | 'provider_error' }
 
-type WaitlistConfirmation = {
-  id: string
-  fullName: string
-  email: string
-  city: string
-  state: string
-}
-
 type LeadNotification = {
   id: string
   recipient: string
@@ -81,19 +73,6 @@ export function createResendEmailService(options: ResendEmailServiceOptions = {}
   }
 
   return {
-    sendWaitlistConfirmation(input: WaitlistConfirmation) {
-      const fullName = escapeHtml(input.fullName)
-      const city = escapeHtml(input.city)
-      const state = escapeHtml(input.state)
-      return send({
-        id: input.id,
-        recipient: input.email,
-        subject: 'Cadastro recebido com sucesso',
-        text: `Olá, ${input.fullName}!\n\nSeu cadastro na lista de espera do Desconto do Dono foi recebido para ${input.city}/${input.state}.`,
-        html: `<p>Olá, ${fullName}!</p><p>Seu cadastro na lista de espera do Desconto do Dono foi recebido para ${city}/${state}.</p>`,
-        idempotencyKey: `waitlist-confirmation/${input.id}`,
-      })
-    },
     sendLeadNotification(input: LeadNotification) {
       const benefitTitle = escapeHtml(input.benefitTitle)
       const clientName = escapeHtml(input.clientName)
@@ -112,5 +91,4 @@ export function createResendEmailService(options: ResendEmailServiceOptions = {}
 
 const emailService = createResendEmailService()
 
-export const sendWaitlistConfirmation = emailService.sendWaitlistConfirmation
 export const sendLeadNotification = emailService.sendLeadNotification

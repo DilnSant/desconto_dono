@@ -9,12 +9,12 @@ import { redirect } from 'next/navigation'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Desconto do Dono — O Clube de Descontos que mais cresce no Brasil',
+  title: 'Desconto do Dono — Conexões e negócios locais',
   description:
-    'O Clube de Descontos e Diretório de Empresas que mais cresce no Brasil. Encontre empresas verificadas, resgate ofertas exclusivas e faça parte da maior rede de empreendedores. Cadastre-se grátis.',
+    'Crie seu perfil gratuito, encontre empresas e empreendedores por cidade e categoria e inicie conversas pelo chat. Cadastre-se no Desconto do Dono.',
   openGraph: {
     title: 'Desconto do Dono — Clube de Descontos e Diretório de Empresas',
-    description: 'Resgate descontos exclusivos e conecte-se com empresas verificadas. O clube de empreendedores brasileiros.',
+    description: 'Encontre negócios locais, conheça empreendedores e inicie conversas pelo chat da plataforma.',
     type: 'website',
   },
 }

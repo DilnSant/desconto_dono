@@ -193,10 +193,6 @@ ALTER TABLE public.leads         ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "categories_public_read"    ON public.categories    FOR SELECT USING (true);
 CREATE POLICY "subcategories_public_read" ON public.subcategories FOR SELECT USING (true);
 
--- Waitlist: inserção pública, leitura pública apenas de city/state/total
-CREATE POLICY "waitlist_public_insert" ON public.waitlist FOR INSERT WITH CHECK (true);
-CREATE POLICY "waitlist_public_read"   ON public.waitlist FOR SELECT USING (true);
-
 -- Profiles
 CREATE POLICY "profiles_public_read"  ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "profiles_owner_insert" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);

@@ -230,7 +230,7 @@ export default function NovoAnuncioPage() {
           </h2>
 
           {imagePreview ? (
-            <div className="relative aspect-video rounded-2xl overflow-hidden group">
+            <div className="relative aspect-[16/9] rounded-2xl overflow-hidden group">
               <Image src={imagePreview} alt="Preview" fill className="object-cover" />
               <button type="button" onClick={() => { setImagePreview(null); setImageFile(null) }}
                 className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors">
@@ -242,7 +242,7 @@ export default function NovoAnuncioPage() {
               type="button"
               id="btn-upload-image"
               onClick={() => imageInputRef.current?.click()}
-              className="w-full aspect-video rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 text-gray-400 hover:border-green-400 hover:text-green-600 transition-all cursor-pointer group"
+              className="w-full aspect-[16/9] rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-3 text-gray-400 hover:border-green-400 hover:text-green-600 transition-all cursor-pointer group"
             >
               <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-100 group-hover:bg-green-50 transition-colors">
                 <Upload className="w-6 h-6" />

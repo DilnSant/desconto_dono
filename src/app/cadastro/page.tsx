@@ -40,18 +40,18 @@ export default async function CadastroPage() {
             className="w-40 h-auto mx-auto mb-6 object-contain"
           />
           <h2 className="text-4xl font-black text-white mb-4 leading-tight">
-            Junte-se a<br />
-            <span style={{ color: '#FEDF00' }}>12.500+</span> empreendedores
+            Faça parte de<br />
+            <span style={{ color: '#FEDF00' }}>novas conexões</span>
           </h2>
           <p className="text-white/70 text-base leading-relaxed mb-8">
-            Cadastre-se gratuitamente, publique seus serviços e alcance clientes em todo o Brasil.
+            Cadastre-se gratuitamente, apresente seu negócio e converse com empreendedores de qualquer cidade.
           </p>
           <div className="space-y-3 text-left">
             {[
-              '✅ Perfil verificado com selos de segurança',
-              '✅ Chat direto com potenciais clientes',
-              '✅ Visibilidade em 14 categorias de negócios',
-              '✅ Sem mensalidade — cadastro 100% gratuito',
+              '✅ Perfil profissional gratuito',
+              '✅ Chat para iniciar conversas',
+              '✅ Explore negócios por cidade e categoria',
+              '✅ Escolha qualquer município do Brasil para seu perfil',
             ].map((item) => (
               <p key={item} className="text-white/80 text-sm flex items-start gap-2">{item}</p>
             ))}

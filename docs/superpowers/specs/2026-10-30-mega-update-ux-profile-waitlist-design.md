@@ -1,11 +1,16 @@
-# Mega update de UX, perfil e lista de espera
+# Mega update de UX e perfil (proposta original)
+
+> Status: o desenho original abaixo propôs uma lista de espera. Essa decisão foi
+> substituída: os cadastros são imediatos, a API da lista de espera retorna
+> `410 Gone`, os registros existentes são preservados e notificações Resend de
+> leads continuam ativas. O desenho comercial vigente está em
+> `2026-11-01-planos-cobertura-asaas-design.md`.
 
 ## Contexto e objetivo
 
-Entregar em uma única atualização as melhorias de identidade visual solicitadas,
-a edição de perfil com múltiplas áreas de atuação, a localização de benefícios e
-uma inscrição de lista de espera confiável com confirmação por e-mail. O domínio
-oficial deve permanecer `https://www.descontododono.com.br`.
+Registrar a proposta inicial de melhorias de identidade visual, edição de perfil
+com múltiplas áreas de atuação, localização de benefícios e lista de espera. O
+domínio oficial permanece `https://www.descontododono.com.br`.
 
 O repositório já possui telas e fluxos para esses casos, mas o perfil usa IDs
 estáticos, a rota da lista de espera oculta erros e a política atual permite
@@ -27,9 +32,8 @@ leitura pública de dados pessoais da tabela `waitlist`.
 ## Decisões aprovadas
 
 - Fazer uma entrega coordenada nos três eixos.
-- Usar Resend para confirmação da lista de espera.
-- Se a inscrição já tiver sido gravada e o Resend falhar, preservar a inscrição
-  e informar a falha de e-mail separadamente, sem induzir um novo cadastro.
+- A proposta de confirmação Resend da lista de espera foi retirada; somente
+  notificações de leads permanecem ativas.
 - Usar IDs UUID reais do Supabase para áreas de atuação e manter os campos
   legados `category_id` e `subcategory_id` sincronizados com as escolhas
   principais.
@@ -74,32 +78,14 @@ leitura pública de dados pessoais da tabela `waitlist`.
 
 ### Waitlist, segurança e e-mail
 
-- Validar tipos, campos obrigatórios, termos, tamanhos e formato do e-mail no
-  servidor; normalizar e-mail e UF.
-- Usar a restrição única do e-mail para detectar duplicidade e retornar `409`,
-  sem depender de uma consulta pública prévia a dados pessoais.
-- Gerar o UUID da inscrição antes do INSERT e não encadear `.select()` na
-  inserção, permitindo retornar o ID para idempotência sem conceder SELECT
-  público sobre a tabela.
-- Manter INSERT público necessário à inscrição, condicionado à aceitação dos
-  termos, mas remover SELECT público da tabela `waitlist` e revogar a permissão
-  de SELECT para `anon` e `authenticated`.
-- Calcular posição usando somente a view agregada `cities_ranking`; se a view
-  falhar depois de persistida a inscrição, retornar a inscrição como recebida e
-  informar que a posição não pôde ser calculada.
-- Após persistir uma inscrição nova, enviar um e-mail de confirmação em
-  português via SDK do Resend, com chave de idempotência vinculada ao ID da
-  inscrição. O resultado deve distinguir `emailSent` de `success`.
-- Em falha de e-mail, registrar o erro no servidor e manter a inscrição válida;
-  a interface explicará que a confirmação não foi enviada.
-- A rota GET de ranking não deve ocultar erro do banco com resposta vazia de
-  sucesso.
-- Configuração de produção necessária: `RESEND_API_KEY` e
-  `WAITLIST_FROM_EMAIL`, sendo o domínio do remetente verificado no Resend. Não
-  há essas variáveis configuradas no ambiente local.
-- A proteção antiabuso desta entrega inclui validação de payload, campo
-  honeypot e unicidade do e-mail. Não será introduzido provedor de CAPTCHA ou
-  infraestrutura externa de rate limiting neste escopo.
+- Encerrar a lista de espera: novas chamadas a `GET` e `POST /api/waitlist`
+  retornam `410 Gone`, sem consultar, inserir ou expor registros.
+- Preservar a tabela e os registros antigos, mas remover as políticas públicas
+  de INSERT e SELECT e revogar as permissões públicas correspondentes.
+- Remover formulários, links e confirmações Resend da lista de espera.
+- Manter notificações de leads pela aplicação, com `RESEND_API_KEY` e
+  `RESEND_FROM_EMAIL`; o destinatário continua derivado do e-mail público do
+  perfil da empresa.
 
 ## Persistência e compatibilidade
 
@@ -109,8 +95,8 @@ Criar `supabase/schema_v4.sql` com comandos idempotentes para:
    preencher as novas seleções a partir de `category_id` e `subcategory_id`
    legados quando ainda estiverem vazias;
 2. adicionar cidade e estado a `benefits`;
-3. remover a política de leitura pública da waitlist, revogar SELECT dos papéis
-   públicos e assegurar a política de INSERT condicionada aos termos;
+3. remover as políticas públicas de INSERT e SELECT da waitlist e revogar as
+   permissões públicas correspondentes;
 4. preservar a view agregada de ranking para leitura pública.
 
 O script deve ser aplicado no SQL Editor do Supabase antes de publicar a
@@ -130,11 +116,9 @@ esquema utilizado pela aplicação.
 4. Exemplos fictícios não podem abrir o modal de resgate; um benefício real
    continua resgatável.
 5. Benefício aceita e exibe cidade/UF quando informadas.
-6. Waitlist responde com erro específico para payload inválido e e-mail
-   duplicado; persistência funciona sem SELECT público de dados pessoais.
-7. Uma falha do Resend não desfaz nem duplica a inscrição e a resposta da
-   interface informa corretamente que o e-mail não foi enviado.
-8. TypeScript, lint e build de produção passam; testes direcionados cobrem os
+6. Waitlist retorna `410 Gone` em GET e POST, preserva registros antigos e não
+   permite inserção ou leitura pública.
+7. TypeScript, lint e build de produção passam; testes direcionados cobrem os
    estados de sucesso, duplicidade e falha de e-mail sem depender de uma chave
    real do Resend.
 

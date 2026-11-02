@@ -41,7 +41,7 @@ export const termsSections: LegalSection[] = [
     title: 'Atualizações e contato',
     paragraphs: [
       'Estes Termos podem ser atualizados para refletir mudanças na plataforma ou na legislação. A versão vigente será publicada nesta página, com a respectiva data de atualização.',
-      'Dúvidas sobre estes Termos podem ser encaminhadas para desconto.do.dono@gmail.com.',
+      'Dúvidas sobre estes Termos podem ser encaminhadas para faleconosco@descontododono.com.br.',
     ],
   },
 ]
@@ -50,7 +50,7 @@ export const privacySections: LegalSection[] = [
   {
     title: 'Controlador e contato',
     paragraphs: [
-      'O controlador dos dados tratados nesta plataforma é o Desconto do Dono. Para exercer seus direitos ou esclarecer dúvidas sobre privacidade, escreva para desconto.do.dono@gmail.com.',
+      'O controlador dos dados tratados nesta plataforma é o Desconto do Dono. Para exercer seus direitos ou esclarecer dúvidas sobre privacidade, escreva para faleconosco@descontododono.com.br.',
     ],
   },
   {
@@ -83,7 +83,7 @@ export const privacySections: LegalSection[] = [
   {
     title: 'Seus direitos',
     paragraphs: [
-      'Nos termos da LGPD, você pode solicitar confirmação do tratamento, acesso, correção, anonimização, bloqueio ou eliminação de dados, além de outras providências previstas em lei. Para solicitar a exclusão da conta e dos dados associados, ou exercer qualquer direito, entre em contato com a administração pelo e-mail desconto.do.dono@gmail.com.',
+      'Nos termos da LGPD, você pode solicitar confirmação do tratamento, acesso, correção, anonimização, bloqueio ou eliminação de dados, além de outras providências previstas em lei. Para solicitar a exclusão da conta e dos dados associados, ou exercer qualquer direito, entre em contato com a administração pelo e-mail faleconosco@descontododono.com.br.',
     ],
   },
   {

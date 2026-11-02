@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Desconto do Dono — Feed de Empresas e Descontos',
-  description: 'Encontre empresas verificadas, resgate descontos exclusivos e conecte-se com empreendedores da sua cidade.',
+  description: 'Encontre empresas, resgate descontos e converse com empreendedores da sua cidade.',
 }
 
 export default async function DashboardPage() {
@@ -117,7 +117,7 @@ export default async function DashboardPage() {
         </button>
       </div>
 
-      {/* ===== CLUBE DE BENEFÍCIOS (destaque) ===== */}
+      {/* ===== CLUBE DE BENEFÍCIOS ===== */}
       <section className="mb-8">
         <div className="relative rounded-3xl overflow-hidden p-6 md:p-8"
           style={{ background: 'linear-gradient(135deg, #002776 0%, #004BA8 50%, #006FC0 100%)' }}>
@@ -161,7 +161,7 @@ export default async function DashboardPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-black text-gray-900">Diretório de Empresas</h2>
-            <p className="text-gray-400 text-sm mt-0.5">Fornecedores e parceiros verificados</p>
+            <p className="text-gray-400 text-sm mt-0.5">Empresas e profissionais da comunidade</p>
           </div>
           <Link href="/empresas" className="text-green-700 font-semibold text-sm flex items-center gap-1 hover:underline">
             Ver todos <ArrowRight className="w-4 h-4" />

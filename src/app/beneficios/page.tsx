@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Clube de Descontos — Desconto do Dono',
-  description: 'Descontos exclusivos oferecidos por empresas e empreendedores verificados do Desconto do Dono.',
+  description: 'Descontos oferecidos por empresas e empreendedores da comunidade Desconto do Dono.',
 }
 
 export default async function BeneficiosPage() {
@@ -110,7 +110,7 @@ export default async function BeneficiosPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-gray-900">Clube de Descontos</h1>
-              <p className="text-gray-500 text-sm">Descontos exclusivos de empresas verificadas</p>
+              <p className="text-gray-500 text-sm">Descontos oferecidos por empresas da comunidade</p>
             </div>
           </div>
         </div>

@@ -106,7 +106,7 @@ export default async function AnuncioPage({ params }: Props) {
         <div className="lg:col-span-2 space-y-4">
 
           {/* Imagem */}
-          <div className="relative aspect-video rounded-3xl overflow-hidden bg-gray-100 shadow-sm">
+          <div className="relative aspect-[16/9] rounded-3xl overflow-hidden bg-gray-100 shadow-sm">
             {listing.image_url ? (
               <Image src={listing.image_url} alt={listing.title} fill className="object-cover" />
             ) : (

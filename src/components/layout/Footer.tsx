@@ -29,6 +29,9 @@ export default function Footer() {
               Conectamos empreendedores de direita para fortalecer negócios locais e transformar boas parcerias em contratos confiáveis.
               Nossa plataforma aproxima quem produz, gera empregos e movimenta a economia brasileira.
             </p>
+            <a href="mailto:faleconosco@descontododono.com.br" className="inline-flex text-sm text-yellow-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-300">
+              faleconosco@descontododono.com.br
+            </a>
 
             <div className="flex items-center gap-2 text-xs text-green-400 font-semibold pt-1">
               <ShieldCheck className="w-4 h-4 text-green-400 shrink-0" />
@@ -49,12 +52,12 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/categorias" className="text-gray-400 hover:text-yellow-400 transition-colors flex items-center gap-2">
+                <Link href="/empresas" className="text-gray-400 hover:text-yellow-400 transition-colors flex items-center gap-2">
                   <span>Explorar Empresas</span>
                 </Link>
               </li>
               <li>
-                <Link href="/beneficios" className="text-gray-400 hover:text-yellow-400 transition-colors flex items-center gap-2">
+                <Link href="/planos" className="text-gray-400 hover:text-yellow-400 transition-colors flex items-center gap-2">
                   <span>Planos</span>
                 </Link>
               </li>
@@ -82,14 +85,14 @@ export default function Footer() {
             </p>
             <div className="p-4 rounded-xl bg-gray-900 border border-gray-800">
               <p className="text-xs text-gray-400 leading-relaxed mb-3">
-                Faça parte da nossa lista de espera e garanta prioridade na abertura da sua cidade.
+                Crie seu perfil gratuito e comece a fazer conexões com empreendedores da sua região.
               </p>
               <Link
-                href="/#lista-espera"
+                href="/cadastro"
                 className="inline-flex items-center justify-center gap-1.5 w-full py-2.5 px-4 rounded-xl text-xs font-bold text-gray-950 transition-all hover:brightness-110 shadow-sm"
                 style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
               >
-                Garantir Vaga na Lista
+                Criar conta grátis
               </Link>
             </div>
           </div>
