@@ -82,9 +82,40 @@ test('schema v4 preserves data while enforcing entitlement and public-access con
   expectMatch(sql, /CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_one_open_per_profile_idx[\s\S]*?WHERE status IN \('PENDING', 'ACTIVE', 'PAST_DUE'\)/i, 'Only one open subscription may exist per profile')
   expectMatch(sql, /profiles_guard_entitlements[\s\S]*?BEFORE INSERT OR UPDATE ON public\.profiles/i, 'Plan and verification fields must be guarded on insert and update')
   expectMatch(sql, /NEW\.plan_type IS DISTINCT FROM OLD\.plan_type[\s\S]*?NEW\.is_verified IS DISTINCT FROM OLD\.is_verified/i, 'Clients must not change plan or verification')
+  expectMatch(sql, /NEW\.cover_url IS DISTINCT FROM OLD\.cover_url[\s\S]*?Cover images are managed by the server/i, 'Clients must not bypass cover quota through direct profile updates')
   expectMatch(sql, /listings_enforce_entitlement[\s\S]*?BEFORE INSERT OR UPDATE OF user_id, is_active, grandfathered/i, 'Listing quotas must be checked on active inserts and updates')
   expectMatch(sql, /NEW\.grandfathered := false/i, 'Clients must not create grandfathered listings')
   expectMatch(sql, /p_event_at \+ interval '3 days'/i, 'Past-due subscriptions must receive exactly three days of grace')
   expectMatch(sql, /p_event_at <= subscription_row\.last_event_at/i, 'Stale provider events must be rejected')
   expectNoMatch(sql, /SECURITY DEFINER/i, 'Migration functions must not bypass RLS')
+})
+
+test('gallery mutation RPCs lock profiles and are restricted to the server role', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+    .replace(/--.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+  const functions = [
+    ['replace_profile_cover', 'uuid, text'],
+    ['update_profile_gallery_image', 'uuid, uuid, integer, boolean'],
+    ['reorder_profile_gallery_images', 'uuid, uuid[]'],
+  ]
+
+  for (const [name, signature] of functions) {
+    const functionSql = sql.match(
+      new RegExp(`CREATE OR REPLACE FUNCTION public\\.${name}[\\s\\S]*?\\n\\$\\$;`, 'i'),
+    )?.[0]
+    assert.ok(functionSql, `${name} must be defined`)
+    expectMatch(functionSql, /SECURITY INVOKER/i, `${name} must not bypass RLS`)
+    expectMatch(functionSql, /FOR UPDATE/i, `${name} must serialize gallery quota changes`)
+    expectMatch(
+      sql,
+      new RegExp(`REVOKE ALL ON FUNCTION public\\.${name}\\(${signature.replace(/[()[\]]/g, '\\$&')}\\)\\s+FROM PUBLIC, anon, authenticated`, 'i'),
+      `${name} must revoke client execution`,
+    )
+    expectMatch(
+      sql,
+      new RegExp(`GRANT EXECUTE ON FUNCTION public\\.${name}\\(${signature.replace(/[()[\]]/g, '\\$&')}\\)\\s+TO service_role`, 'i'),
+      `${name} must be service-role-only`,
+    )
+  }
 })

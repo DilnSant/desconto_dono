@@ -3,11 +3,9 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  BadgeCheck, Shield, Star, Globe, AtSign, Phone, Mail,
+  BadgeCheck, Star, Globe, AtSign, Phone, Mail,
   MapPin, MessageCircle, Lock, Award, ArrowLeft, Calendar,
-  Video
 } from 'lucide-react'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getServerDb } from '@/lib/supabase/server-db'
 import { formatDate, formatWhatsAppLink, getInitials } from '@/lib/utils/helpers'
 import { CATEGORY_COLOR_MAP } from '@/lib/constants/categories'
@@ -15,6 +13,7 @@ import ListingCard from '@/components/listings/ListingCard'
 import type { ListingWithProfile, ProfileWithCategory, PlanType } from '@/types/database'
 import { cn } from '@/lib/utils/helpers'
 import { normalizeStoredPlanType } from '@/lib/plans/entitlements'
+import { getSignedPublicGallery } from '@/lib/profiles/gallery'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -46,13 +45,6 @@ export const dynamic = 'force-dynamic'
 function canShowContacts(plan: PlanType) {
   return plan === 'Essencial' || plan === 'Profissional'
 }
-function canShowVideo(plan: PlanType) {
-  return plan === 'Profissional'
-}
-function maxVideos(plan: PlanType): number {
-  if (plan === 'Profissional') return 1
-  return 0
-}
 
 export default async function PublicProfilePage({ params }: Props) {
   const { id } = await params
@@ -79,21 +71,13 @@ export default async function PublicProfilePage({ params }: Props) {
   const listings = (listingsRaw || []) as ListingWithProfile[]
   const colors = CATEGORY_COLOR_MAP[typedProfile.categories?.color || 'neutral']
   const plan = normalizeStoredPlanType(typedProfile.plan_type || 'Gratuito')
+  const signedGallery = await getSignedPublicGallery(id)
+  const coverImage = signedGallery.find((image) => image.id === 'cover')?.url
+  const galleryImages = signedGallery.filter((image) => image.id !== 'cover')
 
   const whatsappLink = typedProfile.whatsapp
     ? formatWhatsAppLink(typedProfile.whatsapp, `Olá ${typedProfile.business_name || typedProfile.full_name}, vi seu perfil no Desconto do Dono!`)
     : null
-
-  // Vídeos para exibir (limitado pelo plano)
-  const videoUrls: string[] = []
-  if (canShowVideo(plan)) {
-    // Coleta video_embed_url dos listings activos
-    const lVideos = listings
-      .filter((l) => l.video_embed_url)
-      .slice(0, maxVideos(plan))
-      .map((l) => l.video_embed_url as string)
-    videoUrls.push(...lVideos)
-  }
 
   const showContacts = canShowContacts(plan)
   const isProfessional = plan === 'Profissional'
@@ -105,23 +89,6 @@ export default async function PublicProfilePage({ params }: Props) {
         <ArrowLeft className="w-4 h-4" /> Voltar
       </Link>
 
-      {/* ===== VÍDEO EMBED (Profissional/Premium) no TOPO ===== */}
-      {videoUrls.length > 0 && (
-        <div className="mb-6 space-y-4">
-          {videoUrls.map((url, i) => (
-            <div key={i} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100">
-              <iframe
-                src={url}
-                className="w-full aspect-video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={`Vídeo ${i + 1} de ${typedProfile.business_name || typedProfile.full_name}`}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
       {/* ===== HERO DO PERFIL ===== */}
       <div className={cn(
         'bg-white rounded-3xl border shadow-sm overflow-hidden mb-6',
@@ -129,8 +96,8 @@ export default async function PublicProfilePage({ params }: Props) {
       )}>
         {/* Capa */}
         <div className="relative h-48 md:h-64">
-          {typedProfile.cover_url ? (
-            <Image src={typedProfile.cover_url} alt="Capa" fill className="object-cover" />
+          {coverImage ? (
+            <Image src={coverImage} alt="Capa" fill unoptimized className="object-cover" />
           ) : (
             <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #005C2D 0%, #009B3A 50%, #002776 100%)' }} />
           )}
@@ -144,8 +111,7 @@ export default async function PublicProfilePage({ params }: Props) {
                 plan === 'Profissional' ? 'text-white bg-gradient-to-r from-blue-600 to-blue-700' :
                 'text-gray-800 bg-yellow-100'
               )}>
-                {plan === 'Profissional' ? <Video className="w-3 h-3" /> :
-                 <Star className="w-3 h-3" />}
+                <Star className="w-3 h-3" />
                 {plan}
               </span>
             </div>
@@ -238,7 +204,7 @@ export default async function PublicProfilePage({ params }: Props) {
             )}
             {plan === 'Profissional' && (
               <div className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full border text-blue-700 bg-blue-50 border-blue-200">
-                <Video className="w-4 h-4" /> Profissional
+                <Star className="w-4 h-4" /> Profissional
               </div>
             )}
             <div className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full border text-green-600 bg-green-50 border-green-200"
@@ -308,6 +274,27 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {galleryImages.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-4 text-xl font-black text-gray-900">
+            Fotos de {typedProfile.business_name || typedProfile.full_name}
+          </h2>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+            {galleryImages.map((image, index) => (
+              <div key={image.id} className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-gray-100">
+                <Image
+                  src={image.url}
+                  alt={`Foto ${index + 1} de ${typedProfile.business_name || typedProfile.full_name}`}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ===== ANÚNCIOS DO PERFIL ===== */}
       {listings.length > 0 && (

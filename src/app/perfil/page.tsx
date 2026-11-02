@@ -7,6 +7,7 @@ import {
   Camera, Save, Loader2, AlertCircle, CheckCircle2,
   Globe, AtSign, Phone, Mail, MapPin, ChevronDown
 } from 'lucide-react'
+import ProfileGallery from '@/components/profile/ProfileGallery'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
 import { ESTADOS_BR } from '@/lib/constants/categories'
@@ -40,7 +41,6 @@ export default function PerfilPage() {
   const [segments, setSegments] = useState<ProfileSegmentSelection>({ segments: [] })
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const coverInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     full_name: '', business_name: '', bio: '', city: '',
@@ -49,9 +49,7 @@ export default function PerfilPage() {
   })
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [coverFile, setCoverFile] = useState<File | null>(null)
 
   useEffect(() => {
     let active = true
@@ -165,18 +163,18 @@ export default function PerfilPage() {
     }
   }, [router])
 
-  const handleImageSelect = (file: File, type: 'avatar' | 'cover') => {
+  const handleAvatarSelect = (file: File) => {
     const url = URL.createObjectURL(file)
-    if (type === 'avatar') { setAvatarFile(file); setAvatarPreview(url) }
-    else { setCoverFile(file); setCoverPreview(url) }
+    setAvatarFile(file)
+    setAvatarPreview(url)
   }
 
-  const uploadImage = async (file: File, bucket: string, userId: string): Promise<string | null> => {
+  const uploadAvatarImage = async (file: File, userId: string): Promise<string> => {
     const ext = file.name.split('.').pop()
     const path = `${userId}/${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
+    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
     if (error) throw error
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
     return data.publicUrl
   }
 
@@ -243,11 +241,8 @@ export default function PerfilPage() {
       if (coverageError) throw coverageError
 
       const avatar_url = avatarFile
-        ? await uploadImage(avatarFile, 'avatars', user.id)
+        ? await uploadAvatarImage(avatarFile, user.id)
         : profile?.avatar_url ?? null
-      const cover_url = coverFile
-        ? await uploadImage(coverFile, 'covers', user.id)
-        : profile?.cover_url ?? null
 
       const { error: updateError } = await db
         .from('profiles')
@@ -262,12 +257,11 @@ export default function PerfilPage() {
         email_public: form.email_public || null,
         whatsapp: form.whatsapp || null,
         avatar_url,
-        cover_url,
       })
       .eq('id', user.id)
 
       if (updateError) throw updateError
-      setProfile((current) => current ? { ...current, ...form, avatar_url, cover_url } : current)
+      setProfile((current) => current ? { ...current, ...form, avatar_url } : current)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (saveError) {
@@ -300,26 +294,9 @@ export default function PerfilPage() {
 
       <form id="profile-form" onSubmit={handleSave} className="space-y-6">
 
-        {/* ===== FOTOS ===== */}
+        {/* ===== LOGOMARCA ===== */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          {/* Capa */}
-          <div className="relative h-40 group cursor-pointer" onClick={() => coverInputRef.current?.click()}>
-            {(coverPreview || profile?.cover_url) ? (
-              <Image src={coverPreview || profile!.cover_url!} alt="Capa" fill className="object-cover" />
-            ) : (
-              <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #009B3A, #002776)' }} />
-            )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <div className="flex items-center gap-2 text-white font-semibold text-sm">
-                <Camera className="w-5 h-5" /> Alterar capa
-              </div>
-            </div>
-            <input ref={coverInputRef} type="file" accept="image/*" className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleImageSelect(e.target.files[0], 'cover')} />
-          </div>
-
-          {/* Avatar */}
-          <div className="px-6 pb-6 -mt-10 flex items-end justify-between">
+          <div className="px-6 py-6 flex items-end justify-between">
             <div className="relative cursor-pointer group" onClick={() => avatarInputRef.current?.click()}>
               {(avatarPreview || profile?.avatar_url) ? (
                 <Image src={avatarPreview || profile!.avatar_url!} alt="Avatar" width={88} height={88}
@@ -334,10 +311,10 @@ export default function PerfilPage() {
                 <Camera className="w-6 h-6 text-white" />
               </div>
               <input ref={avatarInputRef} type="file" accept="image/*" className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleImageSelect(e.target.files[0], 'avatar')} />
+                onChange={(e) => e.target.files?.[0] && handleAvatarSelect(e.target.files[0])} />
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">Clique nas imagens para alterar</p>
+              <p className="text-sm text-gray-500">Logomarca disponível em todos os planos</p>
               {(profile?.is_verified) && (
                 <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-semibold mt-1">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Perfil Verificado
@@ -346,6 +323,8 @@ export default function PerfilPage() {
             </div>
           </div>
         </div>
+
+        <ProfileGallery />
 
         {/* ===== DADOS BÁSICOS ===== */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">

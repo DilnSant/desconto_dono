@@ -634,6 +634,215 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.replace_profile_cover(
+  p_profile_id uuid,
+  p_object_path text
+)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  previous_cover_url text;
+  effective_plan text;
+  max_photos integer;
+  used_photos integer;
+BEGIN
+  IF p_profile_id IS NULL
+     OR (p_object_path IS NOT NULL AND (
+       p_object_path !~ ('^' || p_profile_id::text || '/')
+       OR p_object_path ~ '(^|/)[.][.]?(/|$)'
+       OR p_object_path ~ E'\\\\'
+     )) THEN
+    RAISE EXCEPTION 'Invalid profile cover';
+  END IF;
+
+  SELECT p.cover_url
+  INTO previous_cover_url
+  FROM public.profiles p
+  WHERE p.id = p_profile_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profile not found';
+  END IF;
+
+  IF p_object_path IS NOT NULL THEN
+    effective_plan := public.get_effective_plan(p_profile_id);
+    max_photos := CASE effective_plan
+      WHEN 'Profissional' THEN 10
+      WHEN 'Essencial' THEN 3
+      ELSE 0
+    END;
+    IF max_photos = 0 THEN
+      RAISE EXCEPTION 'Profile photo limit reached'
+        USING ERRCODE = '23514';
+    END IF;
+
+    IF previous_cover_url IS NULL THEN
+      SELECT count(*)::integer
+      INTO used_photos
+      FROM public.profile_gallery_images gi
+      WHERE gi.profile_id = p_profile_id
+        AND (
+          gi.upload_status = 'pending'
+          OR (gi.upload_status = 'ready' AND gi.is_active)
+        );
+      IF used_photos >= max_photos THEN
+        RAISE EXCEPTION 'Profile photo limit reached'
+          USING ERRCODE = '23514';
+      END IF;
+    END IF;
+  END IF;
+
+  UPDATE public.profiles
+  SET cover_url = p_object_path,
+      updated_at = statement_timestamp()
+  WHERE id = p_profile_id;
+
+  RETURN previous_cover_url;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.update_profile_gallery_image(
+  p_profile_id uuid,
+  p_image_id uuid,
+  p_display_order integer,
+  p_is_active boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  profile_cover_url text;
+  image_upload_status text;
+  image_is_active boolean;
+  effective_plan text;
+  max_photos integer;
+  used_photos integer;
+BEGIN
+  IF p_profile_id IS NULL OR p_image_id IS NULL
+     OR p_display_order IS NULL OR p_display_order < 0
+     OR p_is_active IS NULL THEN
+    RAISE EXCEPTION 'Invalid gallery image update';
+  END IF;
+
+  SELECT p.cover_url
+  INTO profile_cover_url
+  FROM public.profiles p
+  WHERE p.id = p_profile_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profile not found';
+  END IF;
+
+  SELECT gi.upload_status, gi.is_active
+  INTO image_upload_status, image_is_active
+  FROM public.profile_gallery_images gi
+  WHERE gi.id = p_image_id
+    AND gi.profile_id = p_profile_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Gallery image not found'
+      USING ERRCODE = 'P0002';
+  END IF;
+
+  IF p_is_active AND image_upload_status <> 'ready' THEN
+    RAISE EXCEPTION 'Only uploaded gallery images can be activated';
+  END IF;
+
+  IF p_is_active AND NOT image_is_active THEN
+    effective_plan := public.get_effective_plan(p_profile_id);
+    max_photos := CASE effective_plan
+      WHEN 'Profissional' THEN 10
+      WHEN 'Essencial' THEN 3
+      ELSE 0
+    END;
+
+    SELECT CASE WHEN profile_cover_url IS NULL THEN 0 ELSE 1 END
+      + count(*)::integer
+    INTO used_photos
+    FROM public.profile_gallery_images gi
+    WHERE gi.profile_id = p_profile_id
+      AND gi.id <> p_image_id
+      AND (
+        gi.upload_status = 'pending'
+        OR (gi.upload_status = 'ready' AND gi.is_active)
+      );
+    IF used_photos >= max_photos THEN
+      RAISE EXCEPTION 'Profile photo limit reached'
+        USING ERRCODE = '23514';
+    END IF;
+  END IF;
+
+  UPDATE public.profile_gallery_images
+  SET display_order = p_display_order,
+      is_active = p_is_active,
+      updated_at = statement_timestamp()
+  WHERE id = p_image_id
+    AND profile_id = p_profile_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.reorder_profile_gallery_images(
+  p_profile_id uuid,
+  p_image_ids uuid[]
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  owner_image_count integer;
+  distinct_image_count integer;
+BEGIN
+  IF p_profile_id IS NULL OR p_image_ids IS NULL THEN
+    RAISE EXCEPTION 'Invalid gallery image order';
+  END IF;
+
+  PERFORM 1
+  FROM public.profiles p
+  WHERE p.id = p_profile_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profile not found';
+  END IF;
+
+  SELECT count(*)::integer
+  INTO owner_image_count
+  FROM public.profile_gallery_images gi
+  WHERE gi.profile_id = p_profile_id;
+
+  SELECT count(DISTINCT requested.image_id)::integer
+  INTO distinct_image_count
+  FROM unnest(p_image_ids) AS requested(image_id);
+
+  IF cardinality(p_image_ids) <> owner_image_count
+     OR cardinality(p_image_ids) <> distinct_image_count
+     OR EXISTS (
+       SELECT 1
+       FROM unnest(p_image_ids) AS requested(image_id)
+       LEFT JOIN public.profile_gallery_images gi
+         ON gi.id = requested.image_id
+        AND gi.profile_id = p_profile_id
+       WHERE gi.id IS NULL
+     ) THEN
+    RAISE EXCEPTION 'Gallery order must contain every owner image exactly once'
+      USING ERRCODE = '23514';
+  END IF;
+
+  UPDATE public.profile_gallery_images gi
+  SET display_order = requested.position::integer - 1,
+      updated_at = statement_timestamp()
+  FROM unnest(p_image_ids) WITH ORDINALITY AS requested(image_id, position)
+  WHERE gi.id = requested.image_id
+    AND gi.profile_id = p_profile_id;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.apply_asaas_subscription_event(
   p_event_key text,
   p_event_type text,
@@ -956,6 +1165,16 @@ BEGIN
       OR NEW.is_premium IS DISTINCT FROM OLD.is_premium
     ) THEN
       RAISE EXCEPTION 'Plan and verification fields are managed by the platform'
+        USING ERRCODE = '42501';
+    END IF;
+
+    IF TG_OP = 'INSERT' AND NEW.cover_url IS NOT NULL THEN
+      RAISE EXCEPTION 'Cover images are managed by the server'
+        USING ERRCODE = '42501';
+    END IF;
+
+    IF TG_OP = 'UPDATE' AND NEW.cover_url IS DISTINCT FROM OLD.cover_url THEN
+      RAISE EXCEPTION 'Cover images are managed by the server'
         USING ERRCODE = '42501';
     END IF;
 
@@ -1509,6 +1728,16 @@ REVOKE ALL ON FUNCTION public.save_profile_coverage(jsonb, jsonb, boolean) FROM 
 GRANT EXECUTE ON FUNCTION public.save_profile_coverage(jsonb, jsonb, boolean) TO authenticated;
 REVOKE ALL ON FUNCTION public.reserve_profile_gallery_slot(uuid, text, integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_profile_gallery_slot(uuid, text, integer) TO service_role;
+REVOKE ALL ON FUNCTION public.replace_profile_cover(uuid, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.replace_profile_cover(uuid, text) TO service_role;
+REVOKE ALL ON FUNCTION public.update_profile_gallery_image(uuid, uuid, integer, boolean)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.update_profile_gallery_image(uuid, uuid, integer, boolean)
+  TO service_role;
+REVOKE ALL ON FUNCTION public.reorder_profile_gallery_images(uuid, uuid[])
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.reorder_profile_gallery_images(uuid, uuid[])
+  TO service_role;
 REVOKE ALL ON FUNCTION public.apply_asaas_subscription_event(text, text, text, text, text, text, text, text, text, timestamptz, timestamptz)
   FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.apply_asaas_subscription_event(text, text, text, text, text, text, text, text, text, timestamptz, timestamptz)

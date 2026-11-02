@@ -645,6 +645,29 @@ export interface Database {
         }
         Returns: string
       }
+      replace_profile_cover: {
+        Args: {
+          p_profile_id: string
+          p_object_path: string | null
+        }
+        Returns: string | null
+      }
+      update_profile_gallery_image: {
+        Args: {
+          p_profile_id: string
+          p_image_id: string
+          p_display_order: number
+          p_is_active: boolean
+        }
+        Returns: undefined
+      }
+      reorder_profile_gallery_images: {
+        Args: {
+          p_profile_id: string
+          p_image_ids: string[]
+        }
+        Returns: undefined
+      }
       apply_asaas_subscription_event: {
         Args: {
           p_event_key: string
