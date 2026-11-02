@@ -3,14 +3,13 @@ import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  MapPin, Clock, Eye, BadgeCheck, Shield, Lock, Award,
-  ChevronRight, Star, ArrowLeft, Tag
+  MapPin, Clock, Eye, BadgeCheck, Shield, Lock, Award, ChevronRight,
 } from 'lucide-react'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { getServerDb } from '@/lib/supabase/server-db'
-import { formatCurrency, formatDate, formatRelativeDate, getInitials, formatWhatsAppLink } from '@/lib/utils/helpers'
+import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { formatCurrency, formatRelativeDate, getInitials, formatWhatsAppLink } from '@/lib/utils/helpers'
 import { CATEGORY_COLOR_MAP } from '@/lib/constants/categories'
-import type { Listing, Profile, Category } from '@/types/database'
+import type { Category, PublicListing, PublicListingWithProfile } from '@/types/database'
 import { cn } from '@/lib/utils/helpers'
 import AnuncioClientActions from './AnuncioClientActions'
 
@@ -18,15 +17,15 @@ interface Props {
   params: Promise<{ id: string }>
 }
 
-type FullListing = Listing & {
-  profiles: Profile & { categories: Category | null }
-  categories: Category | null
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const supabase = await getServerDb()
-  const { data } = await supabase.from('listings').select('title, description').eq('id', id).single()
+  const { data, error } = await supabase
+    .from('listings_public')
+    .select('title, description')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
   if (!data) return { title: 'Anúncio não encontrado' }
   return {
     title: `${data.title} | Desconto do Dono`,
@@ -40,21 +39,47 @@ export default async function AnuncioPage({ params }: Props) {
   const { id } = await params
   const supabase = await getServerDb()
 
-  const { data } = await supabase
-    .from('listings')
-    .select(`*, profiles:user_id(*, categories(*)), categories:category_id(*)`)
+  const { data: listingData, error: listingError } = await supabase
+    .from('listings_public')
+    .select('id, user_id, category_id, subcategory_id, title, description, price, price_type, image_url, location_city, location_state, is_active, views, created_at, updated_at, grandfathered')
     .eq('id', id)
-    .single()
+    .maybeSingle()
 
-  if (!data) notFound()
+  if (listingError) throw listingError
+  if (!listingData) notFound()
 
-  // Incrementar views
-  await supabase.from('listings').update({ views: (data.views || 0) + 1 }).eq('id', id)
+  const [profileResult, categoryResult] = await Promise.all([
+    supabase
+      .from('profiles_public')
+      .select('id, full_name, business_name, city, state, avatar_url, is_verified, plan_type, public_whatsapp')
+      .eq('id', listingData.user_id)
+      .maybeSingle(),
+    listingData.category_id
+      ? supabase.from('categories').select('id, name, color, slug').eq('id', listingData.category_id).maybeSingle()
+      : { data: null, error: null },
+  ])
+  if (profileResult.error) throw profileResult.error
+  if (categoryResult.error) throw categoryResult.error
+  if (!profileResult.data) notFound()
 
-  const listing = data as unknown as FullListing
+  const listing = {
+    ...(listingData as PublicListing),
+    profiles: profileResult.data as PublicListingWithProfile['profiles'],
+    categories: categoryResult.data as Pick<Category, 'id' | 'name' | 'color' | 'slug'> | null,
+  }
+  try {
+    const admin = createSupabaseAdminClient()
+    const { error: viewError } = await admin.rpc('increment_public_listing_view', {
+      p_listing_id: id,
+    })
+    if (viewError) console.error('[ANÚNCIO] Falha ao registrar visualização', viewError)
+  } catch (error) {
+    console.error('[ANÚNCIO] Falha ao registrar visualização', error)
+  }
+
   const colors = CATEGORY_COLOR_MAP[listing.categories?.color || 'neutral']
-  const whatsappLink = listing.profiles?.whatsapp
-    ? formatWhatsAppLink(listing.profiles.whatsapp, `Olá! Vi sua oferta "${listing.title}" no Desconto do Dono.`)
+  const whatsappLink = listing.profiles.public_whatsapp
+    ? formatWhatsAppLink(listing.profiles.public_whatsapp, `Olá! Vi sua oferta "${listing.title}" no Desconto do Dono.`)
     : null
 
   const businessName = listing.profiles?.business_name || listing.profiles?.full_name || 'Empresa'
@@ -96,19 +121,6 @@ export default async function AnuncioPage({ params }: Props) {
               </span>
             )}
           </div>
-
-          {/* Video embed (Profissional/Premium) */}
-          {listing.video_embed_url && (
-            <div className="rounded-3xl overflow-hidden shadow-sm border border-gray-100">
-              <iframe
-                src={listing.video_embed_url}
-                className="w-full aspect-video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={`Vídeo de ${listing.title}`}
-              />
-            </div>
-          )}
 
           {/* Título e meta */}
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6">
@@ -168,11 +180,7 @@ export default async function AnuncioPage({ params }: Props) {
           <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden sticky top-24">
             {/* Capa mini */}
             <div className="h-16 relative">
-              {listing.profiles?.cover_url ? (
-                <Image src={listing.profiles.cover_url} alt="Capa" fill className="object-cover" />
-              ) : (
-                <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #009B3A, #002776)' }} />
-              )}
+              <div className="h-full w-full" style={{ background: 'linear-gradient(135deg, #009B3A, #002776)' }} />
             </div>
 
             <div className="px-5 pb-5 -mt-8">

@@ -31,10 +31,8 @@ type BenefitItem = {
   category: string
   valid_until: string | null
   redemptions: number
-  whatsapp: string | null
   avatar_url: string | null
   is_verified: boolean
-  video_embed_url?: string | null
   link_url?: string | null
 }
 
@@ -81,19 +79,6 @@ export default function BeneficiosFeed({ benefits }: BeneficiosFeedProps) {
                 {/* Faixa Brasil */}
                 <div className="relative h-1.5"
                   style={{ background: 'linear-gradient(90deg, #009B3A, #FEDF00, #002776)' }} />
-
-                {/* Embed de vídeo (se houver) */}
-                {benefit.video_embed_url && (
-                  <div className="relative w-full aspect-video overflow-hidden bg-gray-100">
-                    <iframe
-                      src={benefit.video_embed_url}
-                      className="w-full h-full"
-                      allowFullScreen
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      title={benefit.title}
-                    />
-                  </div>
-                )}
 
                 <div className="p-5 flex-1 flex flex-col">
                   {/* Header: categoria + desconto */}

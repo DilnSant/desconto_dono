@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     findPublicEmail: async (authorId) => {
       const supabase = await getServerDb()
       const { data, error } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('email_public')
         .eq('id', authorId)
         .maybeSingle()

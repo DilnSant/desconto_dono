@@ -6,12 +6,12 @@ import { Send, ArrowLeft, Shield, MoreVertical, Phone, AlertCircle } from 'lucid
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
 import { formatRelativeDate, getInitials } from '@/lib/utils/helpers'
-import type { Message, Profile } from '@/types/database'
+import type { Message, PublicProfile } from '@/types/database'
 import { cn } from '@/lib/utils/helpers'
 
 interface ChatWindowProps {
   currentUserId: string
-  otherUser: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'is_verified' | 'whatsapp'>
+  otherUser: Pick<PublicProfile, 'id' | 'full_name' | 'avatar_url' | 'is_verified' | 'public_whatsapp'>
   listingId?: string
 }
 
@@ -137,9 +137,9 @@ export default function ChatWindow({ currentUserId, otherUser, listingId }: Chat
         </div>
 
         <div className="flex items-center gap-2">
-          {otherUser.whatsapp && (
+          {otherUser.public_whatsapp && (
             <a
-              href={`https://wa.me/55${otherUser.whatsapp.replace(/\D/g, '')}`}
+              href={`https://wa.me/55${otherUser.public_whatsapp.replace(/\D/g, '')}`}
               target="_blank" rel="noopener noreferrer"
               id="chat-whatsapp"
               className="p-2 rounded-xl text-white hover:bg-white/20 transition-colors"

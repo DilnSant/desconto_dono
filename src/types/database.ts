@@ -599,6 +599,7 @@ export interface Database {
           segment_ids: string[]
           subcategory_ids: string[]
           service_area_ibge_codes: string[]
+          service_area_state_codes: string[]
           service_area_names: string[]
           national_coverage: boolean
         }
@@ -625,6 +626,10 @@ export interface Database {
       }
     }
     Functions: {
+      increment_public_listing_view: {
+        Args: { p_listing_id: string }
+        Returns: undefined
+      }
       get_effective_plan: {
         Args: { p_profile_id: string }
         Returns: string
@@ -699,6 +704,8 @@ export type Category = Database['public']['Tables']['categories']['Row']
 export type Subcategory = Database['public']['Tables']['subcategories']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Listing = Database['public']['Tables']['listings']['Row']
+export type PublicProfile = Database['public']['Views']['profiles_public']['Row']
+export type PublicListing = Database['public']['Views']['listings_public']['Row']
 export type Message = Database['public']['Tables']['messages']['Row']
 export type Conversation = Database['public']['Tables']['conversations']['Row']
 export type Lead = Database['public']['Tables']['leads']['Row']
@@ -714,6 +721,13 @@ export type ListingWithProfile = Listing & {
   profiles: Pick<Profile, 'id' | 'full_name' | 'business_name' | 'avatar_url' | 'city' | 'state' | 'is_verified' | 'plan_type'>
   categories: Pick<Category, 'name' | 'color' | 'slug'> | null
 }
+
+export type PublicListingWithProfile = PublicListing & {
+  profiles: Pick<PublicProfile, 'id' | 'full_name' | 'business_name' | 'avatar_url' | 'city' | 'state' | 'is_verified' | 'plan_type' | 'public_whatsapp'>
+  categories: Pick<Category, 'id' | 'name' | 'color' | 'slug'> | null
+}
+
+export type PublicProfileCardData = PublicProfile
 
 export type ProfileWithCategory = Profile & {
   categories: Category | null

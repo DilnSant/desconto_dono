@@ -1,16 +1,16 @@
-import React from 'react'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
-  Search, Plus, Star, ShieldCheck, TrendingUp, MessageCircle,
-  MapPin, ArrowRight, Filter, Users, Award, BadgeCheck, Zap
+  Search, Plus, Star, MessageCircle,
+  MapPin, ArrowRight, Filter, BadgeCheck
 } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { db as serverDb } from '@/lib/supabase/db'
 import CategoryGrid from '@/components/categories/CategoryGrid'
 import ListingCard from '@/components/listings/ListingCard'
-import type { ListingWithProfile } from '@/types/database'
+import { attachPublicListingRelations } from '@/lib/directory/public-profiles'
+import type { Category, PublicListing, PublicListingWithProfile, PublicProfile } from '@/types/database'
 import SponsorBanner from '@/components/ui/SponsorBanner'
 
 
@@ -22,58 +22,6 @@ export const metadata: Metadata = {
   title: 'Desconto do Dono — Feed de Empresas e Descontos',
   description: 'Encontre empresas verificadas, resgate descontos exclusivos e conecte-se com empreendedores da sua cidade.',
 }
-
-// Mock listings para quando banco está vazio
-const MOCK_LISTINGS: ListingWithProfile[] = [
-  {
-    id: 'mock-1', user_id: 'u1', title: 'Desenvolvimento de Sites e Lojas Virtuais',
-    category_id: '11111111-0003-0003-0003-000000000003', subcategory_id: null,
-    description: 'Sites modernos, responsivos e focados em conversão.',
-    price: 1500, price_type: 'fixed', image_url: null, video_embed_url: null,
-    location_city: 'São Paulo', location_state: 'SP', is_active: true, views: 234, grandfathered: false,
-    created_at: new Date(Date.now() - 3600000).toISOString(), updated_at: '',
-    profiles: { id: 'u1', full_name: 'Carlos Mendes', business_name: 'WebPro Brasil', avatar_url: null, city: 'São Paulo', state: 'SP', is_verified: true, plan_type: 'Profissional' as const },
-    categories: { name: 'Desenvolvedores', color: 'slate', slug: 'desenvolvedores' },
-  },
-  {
-    id: 'mock-2', user_id: 'u2', title: 'Consultoria Financeira para PMEs',
-    category_id: '11111111-0006-0006-0006-000000000006', subcategory_id: null,
-    description: 'Organize as finanças da sua empresa e aumente lucros.',
-    price: null, price_type: 'negotiable', image_url: null, video_embed_url: null,
-    location_city: 'Belo Horizonte', location_state: 'MG', is_active: true, views: 187, grandfathered: false,
-    created_at: new Date(Date.now() - 7200000).toISOString(), updated_at: '',
-    profiles: { id: 'u2', full_name: 'Ana Rodrigues', business_name: 'FinancePro MG', avatar_url: null, city: 'Belo Horizonte', state: 'MG', is_verified: true, plan_type: 'Essencial' as const },
-    categories: { name: 'Financeiras', color: 'teal', slug: 'financeiras' },
-  },
-  {
-    id: 'mock-3', user_id: 'u3', title: 'Marketing Digital e Design de Marcas',
-    category_id: '11111111-0010-0010-0010-000000000010', subcategory_id: null,
-    description: 'Campanhas que geram resultado. Google Ads, Meta e Branding.',
-    price: 800, price_type: 'fixed', image_url: null, video_embed_url: null,
-    location_city: 'Curitiba', location_state: 'PR', is_active: true, views: 312, grandfathered: false,
-    created_at: new Date(Date.now() - 86400000).toISOString(), updated_at: '',
-    profiles: { id: 'u3', full_name: 'Pedro Lima', business_name: 'AdsMax PR', avatar_url: null, city: 'Curitiba', state: 'PR', is_verified: false, plan_type: 'Gratuito' as const },
-    categories: { name: 'Marketing', color: 'rose', slug: 'marketing' },
-  },
-  {
-    id: 'mock-4', user_id: 'u4', title: 'Contabilidade para MEI e Pequenas Empresas',
-    category_id: '11111111-0006-0006-0006-000000000006', subcategory_id: null,
-    description: 'BPO Financeiro, Contabilidade Digital e abertura de empresa.',
-    price: 250, price_type: 'fixed', image_url: null, video_embed_url: null,
-    location_city: 'Salvador', location_state: 'BA', is_active: true, views: 456, grandfathered: false,
-    created_at: new Date(Date.now() - 172800000).toISOString(), updated_at: '',
-    profiles: { id: 'u4', full_name: 'Fernanda Costa', business_name: 'ContaFácil BA', avatar_url: null, city: 'Salvador', state: 'BA', is_verified: true, plan_type: 'Premium' as const },
-    categories: { name: 'Financeiras', color: 'teal', slug: 'financeiras' },
-  },
-]
-
-const MOCK_BENEFITS = [
-  { id: 'b1', title: '30% Off em Software CRM Completo', discount_pct: 30, author: 'TechPro BR', category: 'Desenvolvedores' },
-  { id: 'b2', title: 'Primeira Consultoria Financeira Grátis', discount_pct: 100, author: 'FinancePro MG', category: 'Financeiras' },
-  { id: 'b3', title: '15% em Toda Publicidade Digital', discount_pct: 15, author: 'AdsMax SP', category: 'Marketing' },
-]
-
-
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient()
@@ -88,18 +36,37 @@ export default async function DashboardPage() {
     .single()
 
   // Buscar anúncios
-  let listings: ListingWithProfile[] = []
+  let listings: PublicListingWithProfile[] = []
+  let listingsError = false
   try {
-    const { data } = await serverDb
-      .from('listings')
-      .select('*, profiles:user_id(id,full_name,business_name,avatar_url,city,state,is_verified,plan_type), categories:category_id(name,color,slug)')
-      .eq('is_active', true)
+    const { data, error } = await serverDb
+      .from('listings_public')
+      .select('id, user_id, category_id, subcategory_id, title, description, price, price_type, image_url, location_city, location_state, is_active, views, created_at, updated_at, grandfathered')
       .order('created_at', { ascending: false })
       .limit(8)
-    if (data && data.length > 0) listings = data as ListingWithProfile[]
-    else listings = MOCK_LISTINGS
-  } catch {
-    listings = MOCK_LISTINGS
+    if (error) throw error
+
+    const publicListings = (data ?? []) as PublicListing[]
+    const profileIds = Array.from(new Set(publicListings.map((listing) => listing.user_id)))
+    const categoryIds = Array.from(new Set(publicListings.flatMap((listing) => listing.category_id ? [listing.category_id] : [])))
+    const [profilesResult, categoriesResult] = await Promise.all([
+      profileIds.length
+        ? serverDb.from('profiles_public').select('id, full_name, business_name, bio, city, state, avatar_url, category_id, category_name, subcategory_id, subcategory_name, is_verified, plan_type, email_public, public_whatsapp, website_url, instagram_url, tiktok_url, created_at, segment_ids, subcategory_ids, service_area_ibge_codes, service_area_state_codes, service_area_names, national_coverage').in('id', profileIds)
+        : { data: [], error: null },
+      categoryIds.length
+        ? serverDb.from('categories').select('id, name, color, slug').in('id', categoryIds)
+        : { data: [], error: null },
+    ])
+    if (profilesResult.error) throw profilesResult.error
+    if (categoriesResult.error) throw categoriesResult.error
+    listings = attachPublicListingRelations(
+      publicListings,
+      (profilesResult.data ?? []) as PublicProfile[],
+      (categoriesResult.data ?? []) as Pick<Category, 'id' | 'name' | 'color' | 'slug'>[],
+    )
+  } catch (error) {
+    console.error('[DASHBOARD] Falha ao carregar anúncios públicos', error)
+    listingsError = true
   }
 
   const firstName = profile?.full_name?.split(' ')[0] || 'Empreendedor'
@@ -166,17 +133,7 @@ export default async function DashboardPage() {
                 <span className="text-yellow-400 font-bold text-sm uppercase tracking-wide">Clube de Benefícios</span>
               </div>
               <h2 className="text-2xl font-black text-white mb-2">Descontos exclusivos entre membros</h2>
-              <p className="text-white/70 text-sm">Empreendedores que cuidam de empreendedores. Ofertas verificadas, sem pegadinhas.</p>
-            </div>
-
-            <div className="flex gap-3 shrink-0">
-              {MOCK_BENEFITS.slice(0, 2).map((b) => (
-                <div key={b.id} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 w-40">
-                  <div className="text-2xl font-black text-yellow-400 mb-1">-{b.discount_pct}%</div>
-                  <p className="text-white text-xs font-semibold leading-tight">{b.title}</p>
-                  <p className="text-white/50 text-xs mt-1">{b.author}</p>
-                </div>
-              ))}
+              <p className="text-white/70 text-sm">Conheça benefícios publicados por empresas da comunidade.</p>
             </div>
 
             <Link href="/beneficios" id="dashboard-benefits-link"
@@ -206,24 +163,28 @@ export default async function DashboardPage() {
             <h2 className="text-xl font-black text-gray-900">Diretório de Empresas</h2>
             <p className="text-gray-400 text-sm mt-0.5">Fornecedores e parceiros verificados</p>
           </div>
-          <Link href="/anuncios" className="text-green-700 font-semibold text-sm flex items-center gap-1 hover:underline">
+          <Link href="/empresas" className="text-green-700 font-semibold text-sm flex items-center gap-1 hover:underline">
             Ver todos <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {listings.map((listing, index) => (
-            <React.Fragment key={listing.id}>
-              <ListingCard listing={listing} />
-              {/* Patrocinador fixo após o 4º card */}
-              {index === 3 && (
-                <div className="col-span-full">
-                  <SponsorBanner variant="feed" />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
+        {listingsError ? (
+          <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            Não foi possível carregar os anúncios. Atualize a página para tentar novamente.
+          </p>
+        ) : listings.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {listings.map((listing) => <ListingCard key={listing.id} listing={listing} />)}
+            {listings.length >= 4 && <div className="col-span-full"><SponsorBanner variant="feed" /></div>}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-gray-100 bg-white px-6 py-10 text-center">
+            <p className="font-semibold text-gray-800">Ainda não há anúncios publicados.</p>
+            <Link href="/empresas" className="mt-2 inline-flex text-sm font-semibold text-green-700 hover:underline">
+              Conheça as empresas cadastradas
+            </Link>
+          </div>
+        )}
       </section>
     </div>
   )

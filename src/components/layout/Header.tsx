@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { useState } from 'react'
-import { Search, Menu, X, MessageCircle, User, LogOut, Plus, Bell } from 'lucide-react'
+import { Search, Menu, X, MessageCircle, User, LogOut, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 interface HeaderProps {
@@ -58,6 +58,12 @@ export default function Header({ user, onSearch }: HeaderProps) {
 
           {/* Ações Desktop */}
           <div className="hidden md:flex items-center gap-2">
+            <Link
+              href="/empresas"
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-300"
+            >
+              Empresas
+            </Link>
             {user ? (
               <>
                 <Link
@@ -132,6 +138,13 @@ export default function Header({ user, onSearch }: HeaderProps) {
         {/* Menu Mobile Dropdown */}
         {menuOpen && (
           <div className="md:hidden mt-3 pb-2 border-t border-white/20 pt-3 flex flex-col gap-2 animate-in slide-in-from-top duration-200">
+            <Link
+              href="/empresas"
+              className="flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm text-white transition-colors hover:bg-white/20"
+              onClick={() => setMenuOpen(false)}
+            >
+              Empresas
+            </Link>
             {user ? (
               <>
                 <Link href="/anuncio/novo" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-green-900 font-semibold text-sm"

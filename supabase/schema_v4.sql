@@ -1471,6 +1471,21 @@ CREATE TRIGGER profile_subcategories_enforce_entitlement
   BEFORE INSERT OR UPDATE OR DELETE ON public.profile_subcategories
   FOR EACH ROW EXECUTE FUNCTION public.enforce_profile_subcategory_entitlement();
 
+CREATE OR REPLACE FUNCTION public.increment_public_listing_view(p_listing_id uuid)
+RETURNS void
+LANGUAGE sql
+SECURITY INVOKER
+SET search_path = ''
+AS $function$
+  UPDATE public.listings
+  SET views = COALESCE(views, 0) + 1
+  WHERE id = p_listing_id
+    AND is_active IS TRUE;
+$function$;
+
+REVOKE ALL ON FUNCTION public.increment_public_listing_view(uuid) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.increment_public_listing_view(uuid) TO service_role;
+
 CREATE OR REPLACE VIEW public.profiles_public WITH (security_barrier = true) AS
 SELECT
   p.id,
@@ -1496,9 +1511,21 @@ SELECT
     THEN p.public_whatsapp
     ELSE NULL
   END AS public_whatsapp,
-  p.website_url,
-  p.instagram_url,
-  p.tiktok_url,
+  CASE
+    WHEN COALESCE(effective.plan_type, 'Gratuito') IN ('Essencial', 'Profissional')
+    THEN p.website_url
+    ELSE NULL
+  END AS website_url,
+  CASE
+    WHEN COALESCE(effective.plan_type, 'Gratuito') IN ('Essencial', 'Profissional')
+    THEN p.instagram_url
+    ELSE NULL
+  END AS instagram_url,
+  CASE
+    WHEN COALESCE(effective.plan_type, 'Gratuito') IN ('Essencial', 'Profissional')
+    THEN p.tiktok_url
+    ELSE NULL
+  END AS tiktok_url,
   p.created_at,
   ARRAY(
     SELECT selected.category_id
@@ -1560,7 +1587,20 @@ SELECT
       AND area.is_active
       AND area.is_national
       AND COALESCE(effective.plan_type, 'Gratuito') IN ('Essencial', 'Profissional')
-  ) AS national_coverage
+  ) AS national_coverage,
+  ARRAY(
+    SELECT area.state_code
+    FROM public.profile_service_areas area
+    WHERE area.profile_id = p.id
+      AND area.is_active
+      AND NOT area.is_national
+    ORDER BY area.selection_order, area.id
+    LIMIT CASE COALESCE(effective.plan_type, 'Gratuito')
+        WHEN 'Profissional' THEN 5
+        WHEN 'Essencial' THEN 3
+        ELSE 1
+      END
+  ) AS service_area_state_codes
 FROM public.profiles p
 LEFT JOIN LATERAL (
   SELECT s.plan_type
@@ -1605,7 +1645,8 @@ LEFT JOIN public.categories category ON category.id = primary_segment.category_i
 LEFT JOIN public.subcategories subcategory
   ON subcategory.id = primary_subcategory.subcategory_id
  AND subcategory.category_id = primary_segment.category_id
-WHERE p.accepted_terms IS TRUE;
+WHERE p.accepted_terms IS TRUE
+  AND p.is_active IS TRUE;
 
 CREATE OR REPLACE VIEW public.listings_public WITH (security_barrier = true) AS
 WITH plans AS (
@@ -1673,6 +1714,13 @@ ranked_listings AS (
   FROM public.listings l
   JOIN plans ON plans.profile_id = l.user_id
   WHERE l.is_active
+    AND EXISTS (
+      SELECT 1
+      FROM public.profiles profile
+      WHERE profile.id = l.user_id
+        AND profile.accepted_terms IS TRUE
+        AND profile.is_active IS TRUE
+    )
 )
 SELECT
   id,

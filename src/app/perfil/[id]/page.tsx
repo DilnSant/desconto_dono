@@ -10,10 +10,11 @@ import { getServerDb } from '@/lib/supabase/server-db'
 import { formatDate, formatWhatsAppLink, getInitials } from '@/lib/utils/helpers'
 import { CATEGORY_COLOR_MAP } from '@/lib/constants/categories'
 import ListingCard from '@/components/listings/ListingCard'
-import type { ListingWithProfile, ProfileWithCategory, PlanType } from '@/types/database'
+import type { Category, PublicListing, PublicListingWithProfile, PublicProfile, PlanType } from '@/types/database'
 import { cn } from '@/lib/utils/helpers'
 import { normalizeStoredPlanType } from '@/lib/plans/entitlements'
 import { getSignedPublicGallery } from '@/lib/profiles/gallery'
+import { CATEGORIES_STATIC } from '@/lib/constants/categories'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -22,11 +23,12 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const supabase = await getServerDb()
-  const { data } = await supabase
-    .from('profiles')
+  const { data, error } = await supabase
+    .from('profiles_public')
     .select('full_name, business_name, bio, city, state')
     .eq('id', id)
-    .single()
+    .maybeSingle()
+  if (error) throw error
 
   if (!data) return { title: 'Perfil não encontrado' }
 
@@ -50,33 +52,47 @@ export default async function PublicProfilePage({ params }: Props) {
   const { id } = await params
   const supabase = await getServerDb()
 
-  const [{ data: profile }, { data: listingsRaw }] = await Promise.all([
+  const [profileResult, listingsResult] = await Promise.all([
     supabase
-      .from('profiles')
-      .select('*, categories(*), subcategories(*)')
+      .from('profiles_public')
+      .select('id, full_name, business_name, bio, city, state, avatar_url, category_id, category_name, subcategory_id, subcategory_name, is_verified, plan_type, email_public, public_whatsapp, website_url, instagram_url, tiktok_url, created_at, segment_ids, subcategory_ids, service_area_ibge_codes, service_area_state_codes, service_area_names, national_coverage')
       .eq('id', id)
-      .single(),
+      .maybeSingle(),
     supabase
-      .from('listings')
-      .select(`*, profiles:user_id(id, full_name, business_name, avatar_url, city, state, is_verified, plan_type), categories:category_id(name, color, slug)`)
+      .from('listings_public')
+      .select('id, user_id, category_id, subcategory_id, title, description, price, price_type, image_url, location_city, location_state, is_active, views, created_at, updated_at, grandfathered')
       .eq('user_id', id)
-      .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(6),
   ])
+  if (profileResult.error) throw profileResult.error
+  if (listingsResult.error) throw listingsResult.error
 
-  if (!profile) notFound()
+  if (!profileResult.data) notFound()
 
-  const typedProfile = profile as ProfileWithCategory
-  const listings = (listingsRaw || []) as ListingWithProfile[]
-  const colors = CATEGORY_COLOR_MAP[typedProfile.categories?.color || 'neutral']
+  const typedProfile = profileResult.data as PublicProfile
+  const publicListings = (listingsResult.data ?? []) as PublicListing[]
+  const categoryIds = Array.from(new Set(publicListings.flatMap((listing) => listing.category_id ? [listing.category_id] : [])))
+  const categoriesResult = categoryIds.length
+    ? await supabase.from('categories').select('id, name, color, slug').in('id', categoryIds)
+    : { data: [], error: null }
+  if (categoriesResult.error) throw categoriesResult.error
+  const categoryMap = new Map<string, Pick<Category, 'id' | 'name' | 'color' | 'slug'>>()
+  for (const category of categoriesResult.data ?? []) categoryMap.set(category.id, category)
+  const listings: PublicListingWithProfile[] = publicListings.map((listing) => ({
+    ...listing,
+    profiles: typedProfile,
+    categories: listing.category_id ? categoryMap.get(listing.category_id) ?? null : null,
+  }))
+  const primaryCategory = CATEGORIES_STATIC.find((category) => category.id === typedProfile.category_id)
+  const colors = CATEGORY_COLOR_MAP[primaryCategory?.color || 'neutral']
   const plan = normalizeStoredPlanType(typedProfile.plan_type || 'Gratuito')
   const signedGallery = await getSignedPublicGallery(id)
   const coverImage = signedGallery.find((image) => image.id === 'cover')?.url
   const galleryImages = signedGallery.filter((image) => image.id !== 'cover')
 
-  const whatsappLink = typedProfile.whatsapp
-    ? formatWhatsAppLink(typedProfile.whatsapp, `Olá ${typedProfile.business_name || typedProfile.full_name}, vi seu perfil no Desconto do Dono!`)
+  const whatsappLink = typedProfile.public_whatsapp
+    ? formatWhatsAppLink(typedProfile.public_whatsapp, `Olá ${typedProfile.business_name || typedProfile.full_name}, vi seu perfil no Desconto do Dono!`)
     : null
 
   const showContacts = canShowContacts(plan)
@@ -186,11 +202,11 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
 
           {/* Categoria */}
-          {typedProfile.categories && (
+          {typedProfile.category_name && (
             <div className="mb-4">
               <span className={cn('inline-flex items-center gap-1 text-sm font-semibold px-3 py-1.5 rounded-full', colors.badge)}>
-                {typedProfile.categories.name}
-                {typedProfile.subcategories && ` · ${typedProfile.subcategories.name}`}
+                {typedProfile.category_name}
+                {typedProfile.subcategory_name && ` · ${typedProfile.subcategory_name}`}
               </span>
             </div>
           )}

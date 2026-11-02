@@ -5,17 +5,16 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  MessageCircle, Search, ArrowLeft, Clock, User,
-  BadgeCheck, ChevronRight, Inbox
+  MessageCircle, Search, BadgeCheck, Inbox
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import ChatWindow from '@/components/chat/ChatWindow'
 import { getInitials, formatRelativeDate } from '@/lib/utils/helpers'
-import type { Profile } from '@/types/database'
+import type { PublicProfile } from '@/types/database'
 
 interface Conversation {
   id: string
-  other_user: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'is_verified' | 'whatsapp'>
+  other_user: Pick<PublicProfile, 'id' | 'full_name' | 'avatar_url' | 'is_verified' | 'public_whatsapp'>
   last_message: string
   last_message_at: string
   unread: number
@@ -55,7 +54,7 @@ export default function MensagensPage() {
           if (!convMap.has(otherId)) {
             convMap.set(otherId, {
               id: otherId,
-              other_user: { id: otherId, full_name: 'Carregando...', avatar_url: null, is_verified: false, whatsapp: null },
+              other_user: { id: otherId, full_name: 'Carregando...', avatar_url: null, is_verified: false, public_whatsapp: null },
               last_message: msg.content,
               last_message_at: msg.created_at,
               unread: (!msg.is_read && msg.receiver_id === user.id) ? 1 : 0,
@@ -71,11 +70,11 @@ export default function MensagensPage() {
         if (ids.length > 0) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data: profiles } = await (supabase as any)
-            .from('profiles')
-            .select('id, full_name, avatar_url, is_verified, whatsapp')
+            .from('profiles_public')
+            .select('id, full_name, avatar_url, is_verified, public_whatsapp')
             .in('id', ids)
 
-          profiles?.forEach((p: { id: string; full_name: string; avatar_url: string | null; is_verified: boolean; whatsapp: string | null }) => {
+          profiles?.forEach((p: { id: string; full_name: string; avatar_url: string | null; is_verified: boolean; public_whatsapp: string | null }) => {
             const conv = convMap.get(p.id)
             if (conv) convMap.set(p.id, { ...conv, other_user: p })
           })
@@ -88,8 +87,8 @@ export default function MensagensPage() {
       if (paraId) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: profile } = await (supabase as any)
-          .from('profiles')
-          .select('id, full_name, avatar_url, is_verified, whatsapp')
+          .from('profiles_public')
+          .select('id, full_name, avatar_url, is_verified, public_whatsapp')
           .eq('id', paraId)
           .single()
         if (profile) setSelectedUser(profile)

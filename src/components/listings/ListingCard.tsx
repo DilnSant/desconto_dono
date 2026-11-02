@@ -2,29 +2,29 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Clock, Eye, Shield, BadgeCheck, Crown, Tag } from 'lucide-react'
-import { formatCurrency, formatRelativeDate, getInitials, truncate } from '@/lib/utils/helpers'
+import { MapPin, Clock, Eye, Shield, BadgeCheck, Tag } from 'lucide-react'
+import { formatCurrency, formatRelativeDate, getInitials } from '@/lib/utils/helpers'
 import { CATEGORY_COLOR_MAP } from '@/lib/constants/categories'
-import type { ListingWithProfile } from '@/types/database'
+import type { PublicListingWithProfile } from '@/types/database'
 import { cn } from '@/lib/utils/helpers'
+import { normalizeStoredPlanType } from '@/lib/plans/entitlements'
 
 interface ListingCardProps {
-  listing: ListingWithProfile
+  listing: PublicListingWithProfile
 }
 
 export default function ListingCard({ listing }: ListingCardProps) {
   const colors = CATEGORY_COLOR_MAP[listing.categories?.color || 'neutral']
-  const plan = (listing.profiles as { plan_type?: string })?.plan_type || 'Gratuito'
-  const isProfOrPremium = plan === 'Profissional' || plan === 'Premium'
-  const isPremium = plan === 'Premium'
+  const plan = normalizeStoredPlanType(listing.profiles.plan_type)
+  const isProfessional = plan === 'Profissional'
 
   return (
     <article
       id={`listing-${listing.id}`}
       className={cn(
         'group bg-white rounded-2xl border shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col',
-        isProfOrPremium
-          ? 'border-yellow-300 ring-2 ring-yellow-400'
+        isProfessional
+          ? 'border-indigo-200'
           : 'border-gray-100'
       )}
     >
@@ -54,15 +54,12 @@ export default function ListingCard({ listing }: ListingCardProps) {
           </span>
         )}
 
-        {/* Badge de plano (Profissional/Premium) */}
-        {isProfOrPremium && (
+        {/* Badge de plano Profissional */}
+        {isProfessional && (
           <div className="absolute top-2 right-2">
-            <span className={cn(
-              'inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full shadow-md',
-              isPremium ? 'bg-yellow-400 text-yellow-900' : 'bg-blue-600 text-white'
-            )}>
-              {isPremium ? <Crown className="w-2.5 h-2.5" /> : <Tag className="w-2.5 h-2.5" />}
-              {plan}
+            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-black text-indigo-700 shadow-md">
+              <Tag className="h-2.5 w-2.5" />
+              Profissional
             </span>
           </div>
         )}
@@ -117,10 +114,6 @@ export default function ListingCard({ listing }: ListingCardProps) {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-800 truncate flex items-center gap-1">
               {listing.profiles?.business_name || listing.profiles?.full_name}
-              {/* Selo BadgeCheck azul para Premium */}
-              {isPremium && (
-                <BadgeCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              )}
             </p>
             <div className="flex items-center gap-1 text-xs text-gray-400">
               <MapPin className="w-3 h-3" />

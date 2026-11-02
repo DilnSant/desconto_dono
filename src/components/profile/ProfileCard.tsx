@@ -3,19 +3,20 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  BadgeCheck, Shield, Star, Globe, AtSign, Phone, Mail,
-  MapPin, MessageCircle, ExternalLink, Award, Lock, Video
+  BadgeCheck, Globe, AtSign, Phone, Mail,
+  MapPin, MessageCircle, ExternalLink, Lock
 } from 'lucide-react'
 import { getInitials, formatWhatsAppLink } from '@/lib/utils/helpers'
-import { CATEGORY_COLOR_MAP } from '@/lib/constants/categories'
-import type { ProfileWithCategory } from '@/types/database'
+import { CATEGORY_COLOR_MAP, CATEGORIES_STATIC } from '@/lib/constants/categories'
+import type { PublicProfileCardData } from '@/types/database'
 import type { PlanType } from '@/types/database'
 import { cn } from '@/lib/utils/helpers'
 import { normalizeStoredPlanType } from '@/lib/plans/entitlements'
 
 interface ProfileCardProps {
-  profile: ProfileWithCategory
+  profile: PublicProfileCardData
   compact?: boolean
+  coverageLabel?: string
 }
 
 function PlanBadge({ plan }: { plan: PlanType }) {
@@ -32,21 +33,16 @@ function PlanBadge({ plan }: { plan: PlanType }) {
   )
 }
 
-export default function ProfileCard({ profile, compact }: ProfileCardProps) {
-  const colors = CATEGORY_COLOR_MAP[profile.categories?.color || 'neutral']
-  const storedPlan = (profile as ProfileWithCategory & { plan_type?: string }).plan_type || 'Gratuito'
-  const plan = normalizeStoredPlanType(storedPlan)
+export default function ProfileCard({ profile, compact, coverageLabel }: ProfileCardProps) {
+  const category = CATEGORIES_STATIC.find((item) => item.id === profile.category_id)
+  const colors = CATEGORY_COLOR_MAP[category?.color || 'neutral']
+  const plan = normalizeStoredPlanType(profile.plan_type || 'Gratuito')
   const isProfessional = plan === 'Profissional'
   const isEssential = plan === 'Essencial' || isProfessional
 
-  const whatsappLink = (isEssential && (profile as ProfileWithCategory & { public_whatsapp?: string }).public_whatsapp)
-    ? formatWhatsAppLink(
-        (profile as ProfileWithCategory & { public_whatsapp?: string }).public_whatsapp!,
-        `Olá, vi seu perfil no Desconto do Dono!`
-      )
-    : profile.whatsapp
-      ? formatWhatsAppLink(profile.whatsapp, `Olá, vi seu perfil no Desconto do Dono!`)
-      : null
+  const whatsappLink = isEssential && profile.public_whatsapp
+    ? formatWhatsAppLink(profile.public_whatsapp, 'Olá, vi seu perfil no Desconto do Dono!')
+    : null
 
   return (
     <article
@@ -58,13 +54,9 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
     >
       {/* Capa */}
       <div className="relative h-24 overflow-hidden">
-        {profile.cover_url ? (
-          <Image src={profile.cover_url} alt="Capa" fill className="object-cover" />
-        ) : (
-          <div className="w-full h-full" style={{
-            background: 'linear-gradient(135deg, #009B3A 0%, #005C2D 50%, #002776 100%)'
-          }} />
-        )}
+        <div className="h-full w-full" style={{
+          background: 'linear-gradient(135deg, #009B3A 0%, #005C2D 50%, #002776 100%)'
+        }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
       </div>
 
@@ -136,6 +128,9 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
             <MapPin className="w-3 h-3" />
             <span>{profile.city}, {profile.state}</span>
           </div>
+          {coverageLabel && (
+            <p className="mt-1 text-xs font-semibold text-[#005c2d]">{coverageLabel}</p>
+          )}
         </div>
 
         {/* Badge de plano */}
@@ -144,13 +139,13 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
         </div>
 
         {/* Categoria */}
-        {profile.categories && (
+        {profile.category_name && (
           <span className={cn(
             'inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full mb-3',
             colors.badge
           )}>
-            {profile.categories.name}
-            {profile.subcategories && ` · ${profile.subcategories.name}`}
+            {profile.category_name}
+            {profile.subcategory_name && ` · ${profile.subcategory_name}`}
           </span>
         )}
 
@@ -202,11 +197,11 @@ export default function ProfileCard({ profile, compact }: ProfileCardProps) {
             ) : null}
 
             {/* TikTok — Essencial+ */}
-            {isEssential && (profile as ProfileWithCategory & { tiktok_url?: string }).tiktok_url ? (
-              <a href={`https://tiktok.com/@${(profile as ProfileWithCategory & { tiktok_url?: string }).tiktok_url!.replace('@', '')}`}
+            {isEssential && profile.tiktok_url ? (
+              <a href={`https://tiktok.com/@${profile.tiktok_url.replace('@', '')}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs text-black hover:underline">
-                <Video className="w-3 h-3" /> TikTok
+                <AtSign className="w-3 h-3" /> TikTok
               </a>
             ) : null}
 
