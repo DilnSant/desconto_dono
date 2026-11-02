@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { Star, Plus } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { db as serverDb } from '@/lib/supabase/db'
 import BeneficiosFeed from './BeneficiosFeed'
 
 export const dynamic = 'force-dynamic'
@@ -70,7 +69,8 @@ export default async function BeneficiosPage() {
 
   let benefits = MOCK_BENEFITS
   try {
-    const { data } = await serverDb
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any)
       .from('benefits')
       .select('*, profiles:author_id(id,full_name,business_name,avatar_url,is_verified), categories:category_id(name)')
       .eq('is_active', true)
