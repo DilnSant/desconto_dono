@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Check } from 'lucide-react'
+import { Check, Sparkles } from 'lucide-react'
 import { getPlanEntitlements, getPlanMonthlyPriceCents, type PlanType } from '@/lib/plans/entitlements'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+import CheckoutButton from './CheckoutButton'
 
 export const metadata: Metadata = {
   title: 'Planos — Desconto do Dono',
@@ -28,7 +30,11 @@ function getPlanFeatures(plan: PlanType) {
   ]
 }
 
-export default function PlanosPage() {
+export default async function PlanosPage() {
+  const supabase = await createSupabaseServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const profileId = user?.id ?? null
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="grid gap-8 border-b border-gray-200 pb-10 md:grid-cols-[minmax(0,1.3fr)_minmax(16rem,0.7fr)] md:items-end">
@@ -54,16 +60,28 @@ export default function PlanosPage() {
             const priceCents = getPlanMonthlyPriceCents(plan)
             const features = getPlanFeatures(plan)
             const isFree = plan === 'Gratuito'
+            const isProfissional = plan === 'Profissional'
 
             return (
               <article
                 key={plan}
-                className={`flex flex-col p-6 sm:p-8 ${index > 0 ? 'border-t border-gray-200 md:border-l md:border-t-0' : ''} ${isFree ? 'bg-green-50' : 'bg-white'}`}
+                className={`relative flex flex-col p-6 sm:p-8 ${index > 0 ? 'border-t border-gray-200 md:border-l md:border-t-0' : ''} ${isFree ? 'bg-green-50' : isProfissional ? 'bg-gray-950' : 'bg-white'}`}
               >
+                {isProfissional && (
+                  <div className="absolute -top-px left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center gap-1 rounded-b-lg bg-yellow-400 px-3 py-1 text-xs font-bold text-gray-950">
+                      <Sparkles className="h-3 w-3" aria-hidden="true" />
+                      Mais popular
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-black text-gray-950">{plan}</h2>
-                    <p className="mt-1 text-sm text-gray-600">
+                    <h2 className={`text-xl font-black ${isProfissional ? 'text-white' : 'text-gray-950'}`}>
+                      {plan}
+                    </h2>
+                    <p className={`mt-1 text-sm ${isProfissional ? 'text-gray-400' : 'text-gray-600'}`}>
                       {isFree ? 'Para começar e criar conexões' : 'Mais recursos para ampliar sua atuação'}
                     </p>
                   </div>
@@ -74,15 +92,18 @@ export default function PlanosPage() {
                   )}
                 </div>
 
-                <p className="mt-7 text-3xl font-black tracking-tight text-gray-950">
+                <p className={`mt-7 text-3xl font-black tracking-tight ${isProfissional ? 'text-white' : 'text-gray-950'}`}>
                   {currency.format(priceCents / 100)}
-                  <span className="ml-1 text-sm font-medium text-gray-500">/ mês</span>
+                  <span className={`ml-1 text-sm font-medium ${isProfissional ? 'text-gray-400' : 'text-gray-500'}`}>/ mês</span>
                 </p>
 
-                <ul className="mt-7 flex-1 space-y-3 border-t border-gray-200 pt-5 text-sm text-gray-700">
+                <ul className={`mt-7 flex-1 space-y-3 border-t pt-5 text-sm ${isProfissional ? 'border-gray-700 text-gray-300' : 'border-gray-200 text-gray-700'}`}>
                   {features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2.5">
-                      <Check aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
+                      <Check
+                        aria-hidden="true"
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${isProfissional ? 'text-yellow-400' : 'text-green-700'}`}
+                      />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -96,9 +117,7 @@ export default function PlanosPage() {
                     Criar conta gratuita
                   </Link>
                 ) : (
-                  <p className="mt-8 border-t border-gray-200 pt-4 text-sm leading-relaxed text-gray-600">
-                    A contratação mensal estará disponível quando o pagamento integrado for habilitado.
-                  </p>
+                  <CheckoutButton plan={plan} profileId={profileId} />
                 )}
               </article>
             )
@@ -110,8 +129,8 @@ export default function PlanosPage() {
         <div>
           <h2 id="plan-terms-title" className="text-lg font-bold text-gray-950">O que cada preço significa</h2>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">
-            “Grátis”, “Fixo” e “Negociável” indicam o preço do produto ou serviço anunciado, não uma cobrança da plataforma.
-            A assinatura dos planos pagos, quando disponível, é mensal.
+            "Grátis", "Fixo" e "Negociável" indicam o preço do produto ou serviço anunciado, não uma cobrança da plataforma.
+            A assinatura dos planos pagos é mensal e pode ser cancelada a qualquer momento.
           </p>
         </div>
         <div>
