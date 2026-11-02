@@ -66,6 +66,7 @@ test('schema v4 preserves data while enforcing entitlement and public-access con
   expectMatch(sql, /FOR UPDATE/i, 'Quota checks must lock owner rows')
   expectMatch(sql, /SECURITY INVOKER/i, 'Database functions must use invoker privileges')
   expectMatch(sql, /FUNCTION public\.save_profile_coverage\s*\(\s*p_service_areas jsonb,\s*p_segments jsonb,\s*p_declared_non_presential boolean\s*\)/i, 'Coverage RPC signature must match the contract')
+  expectMatch(sql, /state_code ~ '\^\[A-Z\]\{2\}\$'/i, 'Coverage state codes must use the IBGE municipality selector UF values')
   const coverageFunction = sql.match(/CREATE OR REPLACE FUNCTION public\.save_profile_coverage[\s\S]*?\n\$\$;/i)?.[0]
   assert.ok(coverageFunction, 'Coverage RPC must be defined')
   assert.equal(

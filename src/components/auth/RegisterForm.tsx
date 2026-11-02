@@ -3,12 +3,17 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Eye, EyeOff, Loader2, AlertCircle, ChevronDown, CheckCircle2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
-import { CATEGORIES_STATIC, ESTADOS_BR } from '@/lib/constants/categories'
-import type { CategoryWithSubs, Subcategory } from '@/types/database'
+import MunicipalitySelect from '@/components/geography/MunicipalitySelect'
+import ProfileSegmentsEditor from '@/components/profiles/ProfileSegmentsEditor'
+import { getSubcategoryCategoryLookup } from '@/lib/categories/catalog'
+import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
+import type { Municipality } from '@/lib/geography/municipalities'
+import { validateCoverageSelection, validateProfileSegments, type ProfileSegmentSelection } from '@/lib/profiles/coverage'
+import type { PlanType } from '@/lib/plans/entitlements'
 
 const STEPS = ['Dados Pessoais', 'Localização', 'Atuação', 'Senha']
 
@@ -22,74 +27,144 @@ export default function RegisterForm() {
     full_name: '',
     business_name: '',
     email: '',
-    city: '',
-    state: '',
     whatsapp: '',
     website_url: '',
     instagram_url: '',
-    category_id: '',
-    subcategory_id: '',
     password: '',
     confirm_password: '',
   })
+  const [municipality, setMunicipality] = useState<Municipality | null>(null)
+  const [segments, setSegments] = useState<ProfileSegmentSelection>({ segments: [] })
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [accountCreated, setAccountCreated] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-
-  const selectedCategory = CATEGORIES_STATIC.find((c) => c.id === form.category_id)
-  const subcategories: Subcategory[] = selectedCategory?.subcategories || []
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
+  const registrationPlan: PlanType = 'Gratuito'
 
   const update = (field: string, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value, ...(field === 'category_id' ? { subcategory_id: '' } : {}) }))
+    setForm((prev) => ({ ...prev, [field]: value }))
 
   const nextStep = () => {
     setError('')
     if (step === 0 && !form.full_name) { setError('Informe seu nome completo'); return }
     if (step === 0 && !form.email) { setError('Informe seu e-mail'); return }
-    if (step === 1 && !form.city) { setError('Informe sua cidade'); return }
-    if (step === 1 && !form.state) { setError('Selecione seu estado'); return }
+    if (step === 1 && !municipality) { setError('Selecione um município oficial'); return }
     if (step < STEPS.length - 1) setStep(step + 1)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (accountCreated) return
 
     if (form.password.length < 8) { setError('A senha deve ter pelo menos 8 caracteres'); return }
     if (form.password !== form.confirm_password) { setError('As senhas não conferem'); return }
+    if (!municipality) { setError('Selecione um município oficial'); setStep(1); return }
+    if (!acceptedTerms) { setError('Aceite os Termos de Uso e a Política de Privacidade'); return }
+    if (categoriesError) { setError(categoriesError); setStep(2); return }
 
-    setLoading(true)
-
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
-          full_name: form.full_name,
-          city: form.city,
-          state: form.state,
-        },
-      },
+    const coverageResult = validateCoverageSelection(registrationPlan, {
+      scope: 'municipalities',
+      municipalities: [municipality],
     })
-
-    if (signUpError || !data.user) {
-      setError(signUpError?.message || 'Erro ao criar conta. Tente novamente.')
-      setLoading(false)
+    if (!coverageResult.valid) { setError(coverageResult.errors.join(' ')); setStep(1); return }
+    if (segments.segments.length !== 1) {
+      setError('Selecione uma categoria para sua área de atuação.')
+      setStep(2)
       return
     }
+    if (segments.segments.some((segment) => !categories.some((category) => category.id === segment.categoryId))) {
+      setError('Selecione uma categoria válida do catálogo.')
+      setStep(2)
+      return
+    }
+    const segmentResult = validateProfileSegments(
+      registrationPlan,
+      segments,
+      getSubcategoryCategoryLookup(categories),
+    )
+    if (!segmentResult.valid) { setError(segmentResult.errors.join(' ')); setStep(2); return }
 
-    // Atualizar perfil com dados adicionais
-    await db.from('profiles').update({
-      business_name: form.business_name || null,
-      city: form.city,
-      state: form.state,
-      whatsapp: form.whatsapp || null,
-      website_url: form.website_url || null,
-      instagram_url: form.instagram_url || null,
-      category_id: form.category_id || null,
-      subcategory_id: form.subcategory_id || null,
-    }).eq('id', data.user.id)
+    setLoading(true)
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: {
+          data: {
+            full_name: form.full_name,
+            city: municipality.name,
+            state: municipality.stateCode,
+            accepted_terms: true,
+          },
+        },
+      })
 
-    router.push('/?cadastro=sucesso')
-    router.refresh()
+      if (signUpError || !data.user) {
+        setError(signUpError?.message || 'Erro ao criar conta. Tente novamente.')
+        return
+      }
+
+      if (!data.session) {
+        setAccountCreated(true)
+        return
+      }
+
+      const { error: profileError } = await db.from('profiles').update({
+        business_name: form.business_name || null,
+        city: municipality.name,
+        state: municipality.stateCode,
+        whatsapp: form.whatsapp || null,
+        website_url: form.website_url || null,
+        instagram_url: form.instagram_url || null,
+      }).eq('id', data.user.id)
+
+      if (profileError) {
+        console.error('[CADASTRO] Falha ao salvar os dados do perfil', profileError)
+        setError('A conta foi criada, mas não foi possível salvar os dados do perfil. Entre novamente e tente salvar em Meu Perfil.')
+        setAccountCreated(true)
+        return
+      }
+
+      const { error: coverageError } = await db.rpc('save_profile_coverage', {
+        p_service_areas: [{
+          ibgeCode: municipality.ibgeCode,
+          name: municipality.name,
+          stateCode: municipality.stateCode,
+          isNational: false,
+          declaredNonPresential: false,
+          selectionOrder: 0,
+        }],
+        p_segments: segments.segments.map((segment, selectionOrder) => ({
+          categoryId: segment.categoryId,
+          selectionOrder,
+          subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
+            subcategoryId,
+            selectionOrder: subcategoryOrder,
+          })),
+        })),
+        p_declared_non_presential: false,
+      })
+
+      if (coverageError) {
+        console.error('[CADASTRO] Falha ao salvar cobertura e segmentos', coverageError)
+        setError(`A conta foi criada, mas não foi possível salvar sua área de atuação: ${coverageError.message}`)
+        setAccountCreated(true)
+        return
+      }
+
+      router.push('/?cadastro=sucesso')
+      router.refresh()
+    } catch (submitError) {
+      console.error('[CADASTRO] Falha inesperada ao criar a conta', submitError)
+      setError(
+        submitError instanceof Error
+          ? `Não foi possível concluir o cadastro: ${submitError.message}`
+          : 'Não foi possível concluir o cadastro. Tente novamente.',
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -104,7 +179,7 @@ export default function RegisterForm() {
           className="h-12 w-auto mx-auto mb-4 object-contain"
         />
         <h1 className="text-2xl font-black text-gray-900">Criar conta grátis</h1>
-        <p className="text-gray-500 text-sm mt-1">Junte-se a milhares de empreendedores</p>
+        <p className="text-gray-500 text-sm mt-1">Crie seu perfil e comece a fazer conexões</p>
       </div>
 
       {/* Stepper */}
@@ -129,8 +204,20 @@ export default function RegisterForm() {
           {error}
         </div>
       )}
+      {accountCreated && (
+        <div role="status" className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          Conta criada. Acesse sua conta para concluir o cadastro no perfil.
+          <Link href="/perfil" className="ml-1 font-semibold underline">Abrir perfil</Link>
+          {' ou '}
+          <Link href="/login" className="font-semibold underline">entrar</Link>.
+        </div>
+      )}
 
-      <form id="register-form" onSubmit={handleSubmit}>
+      <form
+        id="register-form"
+        onSubmit={handleSubmit}
+        className={accountCreated ? 'pointer-events-none opacity-50' : ''}
+      >
         {/* STEP 0: Dados Pessoais */}
         {step === 0 && (
           <div className="space-y-4">
@@ -176,31 +263,13 @@ export default function RegisterForm() {
         {/* STEP 1: Localização */}
         {step === 1 && (
           <div className="space-y-4">
-            <div>
-              <label htmlFor="reg-city" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Cidade *
-              </label>
-              <input id="reg-city" type="text" value={form.city}
-                onChange={(e) => update('city', e.target.value)}
-                placeholder="Sua cidade"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all" />
-            </div>
-            <div>
-              <label htmlFor="reg-state" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Estado *
-              </label>
-              <div className="relative">
-                <select id="reg-state" value={form.state}
-                  onChange={(e) => update('state', e.target.value)}
-                  className="w-full appearance-none px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white">
-                  <option value="">Selecione o estado</option>
-                  {ESTADOS_BR.map((est) => (
-                    <option key={est.sigla} value={est.sigla}>{est.nome} ({est.sigla})</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
+            <MunicipalitySelect
+              id="reg-city"
+              label="Cidade de atuação"
+              value={municipality}
+              onChange={setMunicipality}
+              required
+            />
             <div>
               <label htmlFor="reg-website" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Site (opcional)
@@ -225,58 +294,14 @@ export default function RegisterForm() {
         {/* STEP 2: Área de Atuação */}
         {step === 2 && (
           <div className="space-y-4">
-            <div>
-              <label htmlFor="reg-category" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Área de Atuação
-              </label>
-              <div className="relative">
-                <select id="reg-category" value={form.category_id}
-                  onChange={(e) => update('category_id', e.target.value)}
-                  className="w-full appearance-none px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white">
-                  <option value="">Selecione a categoria</option>
-                  {CATEGORIES_STATIC.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-
-            {form.category_id && subcategories.length > 0 && (
-              <div>
-                <label htmlFor="reg-subcategory" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                  Subcategoria
-                </label>
-                <div className="relative">
-                  <select id="reg-subcategory" value={form.subcategory_id}
-                    onChange={(e) => update('subcategory_id', e.target.value)}
-                    className="w-full appearance-none px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white">
-                    <option value="">Selecione a subcategoria</option>
-                    {subcategories.map((sub) => (
-                      <option key={sub.id} value={sub.id}>{sub.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-            )}
-
-            {/* Preview da seleção */}
-            {selectedCategory && (
-              <div className="p-4 rounded-xl border border-green-100 bg-green-50">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-green-800">{selectedCategory.name}</p>
-                    {form.subcategory_id && (
-                      <p className="text-xs text-green-600">
-                        {subcategories.find((s) => s.id === form.subcategory_id)?.name}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
+            <ProfileSegmentsEditor
+              categories={categories}
+              loading={categoriesLoading}
+              catalogError={categoriesError}
+              plan={registrationPlan}
+              value={segments}
+              onChange={setSegments}
+            />
           </div>
         )}
 
@@ -308,12 +333,20 @@ export default function RegisterForm() {
                 placeholder="Repita a senha" required
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all" />
             </div>
-            <p className="text-xs text-gray-400">
-              Ao criar conta, você concorda com nossos{' '}
-              <Link href="/termos" className="text-green-700 hover:underline">Termos de Uso</Link>{' '}
-              e{' '}
-              <Link href="/privacidade" className="text-green-700 hover:underline">Política de Privacidade</Link>.
-            </p>
+            <label className="flex items-start gap-2 text-xs text-gray-500">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(event) => setAcceptedTerms(event.target.checked)}
+                required
+              />
+              <span>
+                Ao criar conta, você concorda com nossos{' '}
+                <Link href="/termos" className="text-green-700 hover:underline">Termos de Uso</Link>{' '}
+                e{' '}
+                <Link href="/privacidade" className="text-green-700 hover:underline">Política de Privacidade</Link>.
+              </span>
+            </label>
           </div>
         )}
 
@@ -333,7 +366,7 @@ export default function RegisterForm() {
               Próximo
             </button>
           ) : (
-            <button type="submit" id="btn-register-submit" disabled={loading}
+            <button type="submit" id="btn-register-submit" disabled={loading || accountCreated}
               className="flex-1 py-3 rounded-xl text-white font-bold text-sm transition-all hover:brightness-110 disabled:opacity-60 flex items-center justify-center gap-2"
               style={{ background: 'linear-gradient(135deg, #009B3A, #005C2D)' }}>
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Criando...</> : 'Criar conta'}

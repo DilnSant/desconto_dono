@@ -9,17 +9,26 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
-import { CATEGORIES_STATIC, ESTADOS_BR } from '@/lib/constants/categories'
-import type { Profile } from '@/types/database'
+import { ESTADOS_BR } from '@/lib/constants/categories'
+import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
+import { canCreateNewActiveListing, getCountableActiveListingCount } from '@/lib/plans/listing-limits'
+import { getPlanEntitlements, normalizeStoredPlanType, type PlanType } from '@/lib/plans/entitlements'
+
+function createListingImagePath(userId: string, fileName: string): string {
+  const extension = fileName.split('.').pop()
+  return `${userId}/${Date.now()}.${extension}`
+}
 
 export default function NovoAnuncioPage() {
   const router = useRouter()
   const imageInputRef = useRef<HTMLInputElement>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [plan, setPlan] = useState<PlanType>('Gratuito')
+  const [activeListingCount, setActiveListingCount] = useState(0)
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
 
   const [form, setForm] = useState({
     title: '',
@@ -35,33 +44,54 @@ export default function NovoAnuncioPage() {
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
 
-  const selectedCategory = CATEGORIES_STATIC.find((c) => c.id === form.category_id)
+  const selectedCategory = categories.find((category) => category.id === form.category_id)
   const subcategories = selectedCategory?.subcategories || []
 
   useEffect(() => {
+    let active = true
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError) throw authError
+        if (!user) {
+          router.push('/login')
+          return
+        }
 
-      const { data } = await db
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
+        const [profileResult, planResult, listingsResult] = await Promise.all([
+          db.from('profiles').select('*').eq('id', user.id).single(),
+          db.rpc('get_effective_plan', { p_profile_id: user.id }),
+          db.from('listings').select('is_active, grandfathered').eq('user_id', user.id),
+        ])
+        const loadError = profileResult.error ?? planResult.error ?? listingsResult.error
+        if (loadError) throw loadError
+        if (!profileResult.data) throw new Error('Perfil não encontrado.')
 
-      if (data) {
-        setProfile(data)
-        setForm((prev) => ({
-          ...prev,
-          location_city: data.city || '',
-          location_state: data.state || '',
-          category_id: data.category_id || '',
-          subcategory_id: data.subcategory_id || '',
-        }))
+        const data = profileResult.data
+        if (active) {
+          setPlan(normalizeStoredPlanType(String(planResult.data)))
+          setActiveListingCount(getCountableActiveListingCount(listingsResult.data ?? []))
+          setForm((prev) => ({
+            ...prev,
+            location_city: data.city || '',
+            location_state: data.state || '',
+            category_id: data.category_id || '',
+            subcategory_id: data.subcategory_id || '',
+          }))
+        }
+      } catch (loadError) {
+        console.error('[ANÚNCIOS] Falha ao carregar o limite do plano', loadError)
+        if (active) {
+          setError('Não foi possível verificar seu plano e o limite de anúncios. Atualize a página e tente novamente.')
+        }
+      } finally {
+        if (active) setLoading(false)
       }
-      setLoading(false)
     }
-    init()
+    void init()
+    return () => {
+      active = false
+    }
   }, [router])
 
   const update = (field: string, value: string) =>
@@ -78,35 +108,48 @@ export default function NovoAnuncioPage() {
     e.preventDefault()
     setError('')
 
+    if (categoriesError) { setError(categoriesError); return }
     if (!form.title.trim()) { setError('Informe o título do anúncio'); return }
     if (!form.category_id) { setError('Selecione uma categoria'); return }
+    if (!selectedCategory) { setError('Selecione uma categoria válida do catálogo.'); return }
+    if (
+      form.subcategory_id &&
+      !selectedCategory.subcategories.some((subcategory) => subcategory.id === form.subcategory_id)
+    ) {
+      setError('Selecione uma subcategoria pertencente à categoria escolhida.')
+      return
+    }
     if (!form.location_city) { setError('Informe a cidade'); return }
     if (!form.location_state) { setError('Selecione o estado'); return }
+    if (!canCreateNewActiveListing(plan, activeListingCount)) {
+      setError(`Seu plano ${plan} atingiu o limite de ${getPlanEntitlements(plan).maxNewActiveListings} anúncio(s) ativo(s).`)
+      return
+    }
 
     setSubmitting(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSubmitting(false); return }
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw authError
+      if (!user) {
+        router.push('/login')
+        return
+      }
 
-    let image_url: string | null = null
-
-    // Upload da imagem
-    if (imageFile) {
-      const ext = imageFile.name.split('.').pop()
-      const path = `${user.id}/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage
-        .from('listings')
-        .upload(path, imageFile, { upsert: true })
-
-      if (!uploadError) {
+      let image_url: string | null = null
+      if (imageFile) {
+        const path = createListingImagePath(user.id, imageFile.name)
+        const { error: uploadError } = await supabase.storage
+          .from('listings')
+          .upload(path, imageFile, { upsert: true })
+        if (uploadError) throw uploadError
         const { data } = supabase.storage.from('listings').getPublicUrl(path)
         image_url = data.publicUrl
       }
-    }
 
-    const { data: listing, error: insertError } = await db
-      .from('listings')
-      .insert({
+      const { data: listing, error: insertError } = await db
+        .from('listings')
+        .insert({
         user_id: user.id,
         title: form.title.trim(),
         description: form.description.trim() || null,
@@ -122,15 +165,25 @@ export default function NovoAnuncioPage() {
       .select()
       .single()
 
-    if (insertError) {
-      setError('Erro ao publicar anúncio. Tente novamente.')
-      setSubmitting(false)
-      return
-    }
+      if (insertError) throw insertError
+      if (!listing) throw new Error('O banco não retornou o anúncio criado.')
 
-    setSuccess(true)
-    setTimeout(() => router.push(`/anuncio/${listing.id}`), 1500)
+      setSuccess(true)
+      setTimeout(() => router.push(`/anuncio/${listing.id}`), 1500)
+    } catch (submitError) {
+      console.error('[ANÚNCIOS] Falha ao publicar anúncio', submitError)
+      setError(
+        submitError instanceof Error
+          ? `Não foi possível publicar o anúncio: ${submitError.message}`
+          : 'Não foi possível publicar o anúncio. Tente novamente.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
+
+  const listingLimit = getPlanEntitlements(plan).maxNewActiveListings
+  const remainingListings = Math.max(0, listingLimit - activeListingCount)
 
   if (loading) {
     return (
@@ -146,6 +199,16 @@ export default function NovoAnuncioPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-black text-gray-900">Novo Anúncio</h1>
         <p className="text-gray-500 mt-1">Publique seus serviços e alcance clientes em todo o Brasil</p>
+        <p className="mt-2 text-sm text-gray-600">
+          Plano {plan}: {activeListingCount} de {listingLimit} anúncio(s) ativo(s) utilizados;{' '}
+          {remainingListings} vaga(s) disponível(is).
+        </p>
+        {remainingListings === 0 && (
+          <p role="status" className="mt-2 text-sm font-medium text-amber-800">
+            Você atingiu o limite do seu plano. Consulte as opções em{' '}
+            <a href="/planos" className="underline">Planos</a>.
+          </p>
+        )}
       </div>
 
       {success && (
@@ -232,14 +295,17 @@ export default function NovoAnuncioPage() {
               <label htmlFor="a-category" className="block text-sm font-semibold text-gray-700 mb-1.5">Categoria *</label>
               <div className="relative">
                 <select id="a-category" value={form.category_id} onChange={(e) => update('category_id', e.target.value)}
+                  disabled={categoriesLoading || Boolean(categoriesError)}
                   className="w-full appearance-none px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white">
                   <option value="">Selecione</option>
-                  {CATEGORIES_STATIC.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               </div>
             </div>
 
+            {categoriesError && <p role="alert" className="text-sm text-red-700">{categoriesError}</p>}
+            {categoriesLoading && <p className="text-sm text-gray-500">Carregando categorias...</p>}
             {subcategories.length > 0 && (
               <div>
                 <label htmlFor="a-subcategory" className="block text-sm font-semibold text-gray-700 mb-1.5">Subcategoria</label>
@@ -247,7 +313,9 @@ export default function NovoAnuncioPage() {
                   <select id="a-subcategory" value={form.subcategory_id} onChange={(e) => update('subcategory_id', e.target.value)}
                     className="w-full appearance-none px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white">
                     <option value="">Selecione</option>
-                    {subcategories.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {subcategories.map((subcategory) => (
+                      <option key={subcategory.id} value={subcategory.id}>{subcategory.name}</option>
+                    ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>

@@ -9,7 +9,19 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
-import { CATEGORIES_STATIC, ESTADOS_BR } from '@/lib/constants/categories'
+import { ESTADOS_BR } from '@/lib/constants/categories'
+import ServiceCoverageEditor from '@/components/geography/ServiceCoverageEditor'
+import ProfileSegmentsEditor from '@/components/profiles/ProfileSegmentsEditor'
+import { getSubcategoryCategoryLookup } from '@/lib/categories/catalog'
+import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
+import { normalizeStoredPlanType, type PlanType } from '@/lib/plans/entitlements'
+import {
+  validateCoverageSelection,
+  validateProfileSegments,
+  type CoverageSelection,
+  type ProfileSegmentSelection,
+} from '@/lib/profiles/coverage'
+import type { Municipality } from '@/lib/geography/municipalities'
 import { getInitials } from '@/lib/utils/helpers'
 import type { ProfileWithCategory } from '@/types/database'
 
@@ -20,13 +32,20 @@ export default function PerfilPage() {
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [plan, setPlan] = useState<PlanType>('Gratuito')
+  const [coverage, setCoverage] = useState<CoverageSelection>({
+    scope: 'municipalities',
+    municipalities: [],
+  })
+  const [segments, setSegments] = useState<ProfileSegmentSelection>({ segments: [] })
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
   const avatarInputRef = useRef<HTMLInputElement>(null)
   const coverInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     full_name: '', business_name: '', bio: '', city: '',
     state: '', website_url: '', instagram_url: '',
-    email_public: '', whatsapp: '', category_id: '', subcategory_id: '',
+    email_public: '', whatsapp: '',
   })
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -34,22 +53,45 @@ export default function PerfilPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
 
-  const selectedCategory = CATEGORIES_STATIC.find((c) => c.id === form.category_id)
-  const subcategories = selectedCategory?.subcategories || []
-
   useEffect(() => {
+    let active = true
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError) throw authError
+        if (!user) {
+          router.push('/login')
+          return
+        }
 
-      const { data } = await db
-        .from('profiles')
-        .select('*, categories(*), subcategories(*)')
-        .eq('id', user.id)
-        .single()
+        const [profileResult, planResult, areaResult, categoryResult, subcategoryResult] = await Promise.all([
+          db.from('profiles').select('*').eq('id', user.id).single(),
+          db.rpc('get_effective_plan', { p_profile_id: user.id }),
+          db.from('profile_service_areas')
+            .select('ibge_code, municipality_name, state_code, is_national, declared_non_presential, selection_order')
+            .eq('profile_id', user.id)
+            .order('selection_order'),
+          db.from('profile_categories')
+            .select('id, category_id, selection_order')
+            .eq('profile_id', user.id)
+            .order('selection_order'),
+          db.from('profile_subcategories')
+            .select('profile_category_id, subcategory_id, selection_order')
+            .order('selection_order'),
+        ])
 
-      if (data) {
+        const loadError =
+          profileResult.error ??
+          planResult.error ??
+          areaResult.error ??
+          categoryResult.error ??
+          subcategoryResult.error
+        if (loadError) throw loadError
+        if (!profileResult.data) throw new Error('Perfil não encontrado.')
+
+        const data = profileResult.data
         setProfile(data as ProfileWithCategory)
+        setPlan(normalizeStoredPlanType(String(planResult.data)))
         setForm({
           full_name: data.full_name || '',
           business_name: data.business_name || '',
@@ -60,13 +102,67 @@ export default function PerfilPage() {
           instagram_url: data.instagram_url || '',
           email_public: data.email_public || '',
           whatsapp: data.whatsapp || '',
-          category_id: data.category_id || '',
-          subcategory_id: data.subcategory_id || '',
         })
+
+        const areaRows = areaResult.data ?? []
+        const nationalArea = areaRows.find((area: { is_national: boolean }) => area.is_national)
+        if (nationalArea) {
+          setCoverage({
+            scope: 'national',
+            declaredNonPresential: nationalArea.declared_non_presential,
+          })
+        } else {
+          const municipalities: Municipality[] = areaRows
+            .filter((area: { is_national: boolean }) => !area.is_national)
+            .map((area: {
+              ibge_code: string
+              municipality_name: string
+              state_code: string
+            }) => ({
+              ibgeCode: area.ibge_code,
+              name: area.municipality_name,
+              stateCode: area.state_code,
+            }))
+          setCoverage({ scope: 'municipalities', municipalities })
+        }
+
+        const savedCategories = categoryResult.data ?? []
+        const savedSubcategories = subcategoryResult.data ?? []
+        if (savedCategories.length > 0) {
+          setSegments({
+            segments: savedCategories.map((category: {
+              id: string
+              category_id: string
+            }, index: number) => ({
+              categoryId: category.category_id,
+              subcategoryIds: savedSubcategories
+                .filter((subcategory: { profile_category_id: string }) => subcategory.profile_category_id === category.id)
+                .map((subcategory: { subcategory_id: string }) => subcategory.subcategory_id),
+              isPrimary: category.category_id === data.category_id || index === 0,
+            })),
+          })
+        } else if (data.category_id) {
+          setSegments({
+            segments: [{
+              categoryId: data.category_id,
+              subcategoryIds: data.subcategory_id ? [data.subcategory_id] : [],
+              isPrimary: true,
+            }],
+          })
+        }
+      } catch (loadError) {
+        console.error('[PERFIL] Falha ao carregar perfil ou cobertura', loadError)
+        if (active) {
+          setError('Não foi possível carregar seus dados de atuação. Verifique a estrutura de cobertura do Supabase e tente novamente.')
+        }
+      } finally {
+        if (active) setLoading(false)
       }
-      setLoading(false)
     }
-    load()
+    void load()
+    return () => {
+      active = false
+    }
   }, [router])
 
   const handleImageSelect = (file: File, type: 'avatar' | 'cover') => {
@@ -79,7 +175,7 @@ export default function PerfilPage() {
     const ext = file.name.split('.').pop()
     const path = `${userId}/${Date.now()}.${ext}`
     const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
-    if (error) return null
+    if (error) throw error
     const { data } = supabase.storage.from(bucket).getPublicUrl(path)
     return data.publicUrl
   }
@@ -87,20 +183,75 @@ export default function PerfilPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (categoriesError) { setError(categoriesError); return }
+    if (segments.segments.length === 0) { setError('Selecione pelo menos um segmento.'); return }
+    if (segments.segments.some((segment) => !categories.some((category) => category.id === segment.categoryId))) {
+      setError('Selecione categorias válidas do catálogo.')
+      return
+    }
+
+    const coverageResult = validateCoverageSelection(plan, coverage)
+    if (!coverageResult.valid) { setError(coverageResult.errors.join(' ')); return }
+    const segmentResult = validateProfileSegments(
+      plan,
+      segments,
+      getSubcategoryCategoryLookup(categories),
+    )
+    if (!segmentResult.valid) { setError(segmentResult.errors.join(' ')); return }
+
     setSaving(true)
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw authError
+      if (!user) {
+        router.push('/login')
+        return
+      }
 
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
+      const serviceAreas = coverage.scope === 'national'
+        ? [{
+            isNational: true,
+            declaredNonPresential: coverage.declaredNonPresential,
+            selectionOrder: 0,
+          }]
+        : coverage.municipalities.map((municipality, selectionOrder) => ({
+            ibgeCode: municipality.ibgeCode,
+            name: municipality.name,
+            stateCode: municipality.stateCode,
+            isNational: false,
+            declaredNonPresential: false,
+            selectionOrder,
+          }))
+      const orderedSegments = [...segments.segments].sort(
+        (left, right) => Number(right.isPrimary) - Number(left.isPrimary),
+      )
 
-    let avatar_url = profile?.avatar_url
-    let cover_url = profile?.cover_url
+      const { error: coverageError } = await db.rpc('save_profile_coverage', {
+        p_service_areas: serviceAreas,
+        p_segments: orderedSegments.map((segment, selectionOrder) => ({
+          categoryId: segment.categoryId,
+          selectionOrder,
+          subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
+            subcategoryId,
+            selectionOrder: subcategoryOrder,
+          })),
+        })),
+        p_declared_non_presential:
+          coverage.scope === 'national' && coverage.declaredNonPresential,
+      })
+      if (coverageError) throw coverageError
 
-    if (avatarFile) avatar_url = await uploadImage(avatarFile, 'avatars', user.id) || avatar_url
-    if (coverFile) cover_url = await uploadImage(coverFile, 'covers', user.id) || cover_url
+      const avatar_url = avatarFile
+        ? await uploadImage(avatarFile, 'avatars', user.id)
+        : profile?.avatar_url ?? null
+      const cover_url = coverFile
+        ? await uploadImage(coverFile, 'covers', user.id)
+        : profile?.cover_url ?? null
 
-    const { error: updateError } = await db
-      .from('profiles')
-      .update({
+      const { error: updateError } = await db
+        .from('profiles')
+        .update({
         full_name: form.full_name,
         business_name: form.business_name || null,
         bio: form.bio || null,
@@ -110,20 +261,25 @@ export default function PerfilPage() {
         instagram_url: form.instagram_url || null,
         email_public: form.email_public || null,
         whatsapp: form.whatsapp || null,
-        category_id: form.category_id || null,
-        subcategory_id: form.subcategory_id || null,
         avatar_url,
         cover_url,
       })
       .eq('id', user.id)
 
-    if (updateError) {
-      setError('Erro ao salvar perfil. Tente novamente.')
-    } else {
+      if (updateError) throw updateError
+      setProfile((current) => current ? { ...current, ...form, avatar_url, cover_url } : current)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
+    } catch (saveError) {
+      console.error('[PERFIL] Falha ao salvar perfil ou cobertura', saveError)
+      setError(
+        saveError instanceof Error
+          ? `Não foi possível salvar o perfil: ${saveError.message}`
+          : 'Não foi possível salvar o perfil. Tente novamente.',
+      )
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   if (loading) {
@@ -135,7 +291,7 @@ export default function PerfilPage() {
   }
 
   const update = (field: string, value: string) =>
-    setForm((p) => ({ ...p, [field]: value, ...(field === 'category_id' ? { subcategory_id: '' } : {}) }))
+    setForm((p) => ({ ...p, [field]: value }))
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -243,35 +399,24 @@ export default function PerfilPage() {
           </div>
         </div>
 
+        <ServiceCoverageEditor
+          plan={plan}
+          value={coverage}
+          onChange={setCoverage}
+          legacyLocation={{ city: form.city, state: form.state }}
+        />
+
         {/* ===== ÁREA DE ATUAÇÃO ===== */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
-          <h2 className="font-black text-gray-800 text-lg">Área de Atuação</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="p-category" className="label-field">Categoria</label>
-              <div className="relative">
-                <select id="p-category" value={form.category_id} onChange={(e) => update('category_id', e.target.value)}
-                  className="input-field appearance-none pr-8">
-                  <option value="">Selecione</option>
-                  {CATEGORIES_STATIC.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
-            {subcategories.length > 0 && (
-              <div>
-                <label htmlFor="p-subcategory" className="label-field">Subcategoria</label>
-                <div className="relative">
-                  <select id="p-subcategory" value={form.subcategory_id} onChange={(e) => update('subcategory_id', e.target.value)}
-                    className="input-field appearance-none pr-8">
-                    <option value="">Selecione</option>
-                    {subcategories.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-            )}
-          </div>
+          <h2 className="font-black text-gray-800 text-lg">Segmentos de atuação</h2>
+          <ProfileSegmentsEditor
+            categories={categories}
+            loading={categoriesLoading}
+            catalogError={categoriesError}
+            plan={plan}
+            value={segments}
+            onChange={setSegments}
+          />
         </div>
 
         {/* ===== CONTATO ===== */}

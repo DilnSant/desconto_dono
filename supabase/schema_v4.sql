@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.profile_service_areas (
       AND ibge_code ~ '^[0-9]{7}$'
       AND municipality_name IS NOT NULL
       AND length(trim(municipality_name)) > 0
-      AND state_code ~ '^[0-9]{2}$'
+      AND state_code ~ '^[A-Z]{2}$'
       AND NOT declared_non_presential)
   ),
   UNIQUE (profile_id, ibge_code)
