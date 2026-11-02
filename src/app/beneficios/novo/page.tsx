@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Loader2, AlertCircle, CheckCircle2, ChevronDown, Calendar, DollarSign, Tag } from 'lucide-react'
+import { Plus, Loader2, AlertCircle, CheckCircle2, ChevronDown, Calendar, DollarSign, Tag, MapPin } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
 import { CATEGORIES_STATIC } from '@/lib/constants/categories'
+import { normalizeBenefitLocation } from '@/lib/benefits/location'
 
 export default function NovoBeneficioPage() {
   const router = useRouter()
@@ -18,7 +19,7 @@ export default function NovoBeneficioPage() {
   const [form, setForm] = useState({
     title: '', description: '', discount_pct: '',
     discount_val: '', link_url: '', whatsapp: '',
-    category_id: '', valid_until: '',
+    category_id: '', valid_until: '', location_city: '', location_state: '',
   })
 
   useEffect(() => {
@@ -43,6 +44,7 @@ export default function NovoBeneficioPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setSubmitting(false); return }
 
+    const location = normalizeBenefitLocation(form.location_city, form.location_state)
     const { error: err } = await db.from('benefits').insert({
       author_id: user.id,
       title: form.title,
@@ -52,6 +54,8 @@ export default function NovoBeneficioPage() {
       link_url: form.link_url || null,
       whatsapp: form.whatsapp || null,
       category_id: form.category_id || null,
+      location_city: location.location_city,
+      location_state: location.location_state,
       valid_until: form.valid_until || null,
       is_active: true,
     })
@@ -106,6 +110,31 @@ export default function NovoBeneficioPage() {
               {CATEGORIES_STATIC.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          <h2 className="font-black text-gray-800 flex items-center gap-2 text-sm">
+            <MapPin className="w-4 h-4 text-green-600" /> Atendimento presencial
+          </h2>
+          <p className="text-xs text-gray-500">
+            Informe a localização quando o benefício depender de atendimento presencial.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="b-city" className="block text-xs font-semibold text-gray-600 mb-1.5">Cidade (opcional)</label>
+              <input id="b-city" type="text" value={form.location_city}
+                onChange={e => update('location_city', e.target.value)}
+                maxLength={100} placeholder="Ex.: Curitiba"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
+            <div>
+              <label htmlFor="b-state" className="block text-xs font-semibold text-gray-600 mb-1.5">Estado (UF)</label>
+              <input id="b-state" type="text" value={form.location_state}
+                onChange={e => update('location_state', e.target.value)}
+                maxLength={2} placeholder="Ex.: PR"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-green-500" />
+            </div>
           </div>
         </div>
 

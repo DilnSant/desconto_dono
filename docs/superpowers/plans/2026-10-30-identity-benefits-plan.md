@@ -23,6 +23,7 @@
 
 - OAuth must not fall back to `window.location.origin`; test the absolute production callback.
 - An unread count of zero or a failed count query must not display a badge; test the count-to-badge condition.
+- An anonymous user or stale count state must not dereference a missing count; test the absent/mismatched user state.
 - The long footer copy must wrap without forcing the logo out of alignment; inspect at mobile and desktop widths.
 - Fictional items must not open the redemption modal, while real items remain enabled; test both branches.
 - Empty optional city/state values must persist as `null`, not empty strings; test the location normalizer.
@@ -83,7 +84,7 @@ In `tests/header-footer-contract.test.mjs`, assert the header source contains th
 
 - [ ] **Step 2: Run the tests and verify failure**
 
-Run: `node --test tests/header-footer-contract.test.mjs tests/unread-count.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/header-footer-contract.test.mjs tests/unread-count.test.mjs`
 Expected: FAIL because the title lockup, real count, and count helper do not exist.
 
 - [ ] **Step 3: Implement the visual changes and real count**
@@ -92,7 +93,7 @@ Increase image height from `h-10 sm:h-12` to approximately `h-13 sm:h-16`. Put t
 
 - [ ] **Step 4: Run tests and inspect responsive layout**
 
-Run: `node --test tests/header-footer-contract.test.mjs tests/unread-count.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/header-footer-contract.test.mjs tests/unread-count.test.mjs`
 Expected: PASS. Start the production build and inspect the header/footer at 375px and 1440px widths; text wraps without horizontal overflow and the logo remains aligned.
 
 ### Task 3: Add benefit location and disable fictional redemptions
@@ -118,7 +119,7 @@ Test `normalizeBenefitLocation(city, state): { location_city: string | null; loc
 
 - [ ] **Step 2: Run tests and verify failure**
 
-Run: `node --experimental-strip-types --test tests/benefit-location.test.mjs tests/benefit-ui-contract.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/benefit-location.test.mjs tests/benefit-ui-contract.test.mjs`
 Expected: FAIL because the normalizer and example marker are not implemented.
 
 - [ ] **Step 3: Add schema, types, form fields, and feed behavior**
@@ -127,7 +128,7 @@ Add nullable `location_city TEXT` and `location_state TEXT` columns with `ADD CO
 
 - [ ] **Step 4: Run tests and validate types**
 
-Run: `node --experimental-strip-types --test tests/benefit-location.test.mjs tests/benefit-ui-contract.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/benefit-location.test.mjs tests/benefit-ui-contract.test.mjs`
 Expected: PASS.
 Run: `npx tsc --noEmit`
 Expected: exit code 0.

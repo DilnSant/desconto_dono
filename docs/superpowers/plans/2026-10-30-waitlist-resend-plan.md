@@ -49,7 +49,7 @@ Test valid payload normalization (trim name/city, lowercase email, uppercase UF)
 
 - [ ] **Step 2: Run tests and verify failure**
 
-Run: `node --experimental-strip-types --test tests/waitlist-validation.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/waitlist-validation.test.mjs`
 Expected: FAIL because the validator does not exist.
 
 - [ ] **Step 3: Implement the validator**
@@ -58,7 +58,7 @@ Validate `unknown` before property access. Return only normalized known fields; 
 
 - [ ] **Step 4: Run tests**
 
-Run: `node --experimental-strip-types --test tests/waitlist-validation.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/waitlist-validation.test.mjs`
 Expected: PASS.
 
 ### Task 2: Add and test the Resend confirmation helper
@@ -78,7 +78,7 @@ Test success, missing environment variables, and provider error. Assert the mess
 
 - [ ] **Step 2: Run tests and verify failure**
 
-Run: `node --experimental-strip-types --test tests/waitlist-confirmation.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/waitlist-confirmation.test.mjs`
 Expected: FAIL because the confirmation helper does not exist.
 
 - [ ] **Step 3: Install and pin the Resend SDK**
@@ -91,7 +91,7 @@ Read `RESEND_API_KEY` and `WAITLIST_FROM_EMAIL` only on the server. Send a conci
 
 - [ ] **Step 5: Run tests without real credentials**
 
-Run: `node --experimental-strip-types --test tests/waitlist-confirmation.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/waitlist-confirmation.test.mjs`
 Expected: PASS using a mocked fetcher/client; no request reaches Resend.
 
 ### Task 3: Secure waitlist SQL and implement the route
@@ -164,7 +164,7 @@ Expected: PASS.
 
 - [ ] **Step 1: Run all waitlist tests**
 
-Run: `node --experimental-strip-types --test tests/waitlist-*.test.mjs`
+Run: `node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/waitlist-*.test.mjs`
 Expected: PASS without Supabase or Resend credentials.
 
 - [ ] **Step 2: Run lint and type checking**

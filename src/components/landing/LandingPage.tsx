@@ -3,9 +3,11 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import {
-  ChevronDown, ChevronUp, Users, MapPin, ShieldCheck,
-  ArrowRight, Zap, HelpCircle, MessageCircle
+  ChevronDown, ChevronUp, Users, MapPin, TrendingUp,
+  ShieldCheck, Award, BadgeCheck, CheckCircle2, Loader2,
+  ArrowRight, Building2, Star, Lock, Zap, HelpCircle
 } from 'lucide-react'
+import { BRAZILIAN_UF_CODES } from '@/lib/waitlist/validation'
 
 // ============================================================
 // DADOS ESTÁTICOS — Carta de Princípios
@@ -23,11 +25,11 @@ const PRINCIPLES = [
 const FAQ_ITEMS = [
   {
     q: 'É pago?',
-    a: 'Criar uma conta e usar os recursos gratuitos não tem custo. Qualquer plano pago deve apresentar suas condições antes da contratação.',
+    a: 'Não. Entrar na lista de espera e criar sua conta quando a plataforma abrir é gratuito.',
   },
   {
-    q: 'Posso usar a plataforma em qualquer cidade?',
-    a: 'Sim. O cadastro é imediato para qualquer município; no plano gratuito, você escolhe uma cidade de atuação.',
+    q: 'Quando abre?',
+    a: 'Vamos abrir por cidade, começando pelas que tiverem mais empreendedores inscritos. Quem está na lista recebe o convite por e-mail.',
   },
   {
     q: 'Preciso ter empresa?',
@@ -35,7 +37,7 @@ const FAQ_ITEMS = [
   },
   {
     q: 'O que vocês fazem com os meus dados?',
-    a: 'Usamos seus dados para criar e administrar sua conta e oferecer os recursos da plataforma. Consulte nossa Política de Privacidade para conhecer os detalhes.',
+    a: 'Usamos só para avisar do lançamento e enviar o convite. Não vendemos nem repassamos seus dados a ninguém, e você pode sair e apagar tudo a qualquer momento.',
   },
   {
     q: 'Vocês perguntam minha posição política?',
@@ -43,9 +45,270 @@ const FAQ_ITEMS = [
   },
   {
     q: 'Tenho uma empresa e quero oferecer benefícios.',
-    a: 'Crie sua conta gratuita e cadastre seu perfil. Você poderá publicar benefícios para a comunidade.',
+    a: 'Ótimo! Entre na lista marcando que tem empresa. Os benefícios serão cadastrados depois da abertura, com aprovação da equipe.',
   },
 ]
+
+// Categorias para o formulário
+const CATEGORIES_FORM = [
+  { id: '11111111-0001-0001-0001-000000000001', name: 'Beleza' },
+  { id: '11111111-0002-0002-0002-000000000002', name: 'Comércios' },
+  { id: '11111111-0003-0003-0003-000000000003', name: 'Desenvolvedores' },
+  { id: '11111111-0004-0004-0004-000000000004', name: 'Diversos' },
+  { id: '11111111-0005-0005-0005-000000000005', name: 'Ensino' },
+  { id: '11111111-0006-0006-0006-000000000006', name: 'Financeiras' },
+  { id: '11111111-0007-0007-0007-000000000007', name: 'Gastronomia' },
+  { id: '11111111-0008-0008-0008-000000000008', name: 'Hotelaria' },
+  { id: '11111111-0009-0009-0009-000000000009', name: 'Lazer' },
+  { id: '11111111-0010-0010-0010-000000000010', name: 'Marketing' },
+  { id: '11111111-0011-0011-0011-000000000011', name: 'Prestação de Serviços' },
+  { id: '11111111-0012-0012-0012-000000000012', name: 'Saúde' },
+  { id: '11111111-0013-0013-0013-000000000013', name: 'Serviços para seu Pet' },
+  { id: '11111111-0014-0014-0014-000000000014', name: 'Veículos' },
+]
+
+// Rankings mock (serão substituídos por dados reais)
+const MOCK_RANKING = [
+  { city: 'São Paulo', state: 'SP', total: 847, companies_count: 312 },
+  { city: 'Belo Horizonte', state: 'MG', total: 634, companies_count: 218 },
+  { city: 'Curitiba', state: 'PR', total: 521, companies_count: 189 },
+  { city: 'Porto Alegre', state: 'RS', total: 489, companies_count: 167 },
+  { city: 'Salvador', state: 'BA', total: 421, companies_count: 145 },
+  { city: 'Fortaleza', state: 'CE', total: 387, companies_count: 134 },
+  { city: 'Recife', state: 'PE', total: 356, companies_count: 121 },
+  { city: 'Manaus', state: 'AM', total: 289, companies_count: 98 },
+]
+
+// ============================================================
+// COMPONENTE WAITLIST FORM
+// ============================================================
+function WaitlistForm() {
+  const [form, setForm] = useState({
+    full_name: '', email: '', city: '', state: '',
+    category_id: '', has_company: false, accepted_terms: false, website: '',
+  })
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState('')
+  const [position, setPosition] = useState<number | null>(null)
+  const [emailSent, setEmailSent] = useState(false)
+  const [notice, setNotice] = useState('')
+
+  const set = (k: string, v: string | boolean) => setForm(p => ({ ...p, [k]: v }))
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!form.accepted_terms) { setError('Você precisa aceitar a Carta de Princípios para continuar.'); return }
+    if (!form.full_name || !form.email || !form.city || !form.state) {
+      setError('Preencha todos os campos obrigatórios.'); return
+    }
+    setError('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Erro ao cadastrar')
+      if (json.success !== true) throw new Error('Não foi possível confirmar o cadastro.')
+      setPosition(typeof json.position === 'number' ? json.position : null)
+      setEmailSent(json.emailSent === true)
+      setNotice(typeof json.notice === 'string' ? json.notice : '')
+      setSuccess(true)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao cadastrar. Tente novamente.')
+    }
+    setLoading(false)
+  }
+
+  if (success) {
+    return (
+      <div className="text-center py-8 px-4">
+        <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #009B3A, #005C2D)' }}>
+          <CheckCircle2 className="w-10 h-10 text-white" />
+        </div>
+        <h3 className="text-2xl font-black text-gray-900 mb-2">Você está na lista! 🎉</h3>
+        {position !== null && (
+          <div className="inline-block px-6 py-2 rounded-full mb-4 text-white font-black text-lg"
+            style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)', color: '#1a1a1a' }}>
+            #{position}º na fila da sua cidade
+          </div>
+        )}
+        <p role="status" aria-live="polite" className="text-gray-600 mb-2 max-w-sm mx-auto">
+          {emailSent
+            ? 'Enviamos um e-mail para confirmar o recebimento do seu cadastro.'
+            : 'Seu cadastro foi recebido, mas não foi possível enviar o e-mail de confirmação agora.'}
+        </p>
+        {notice && <p className="text-sm text-amber-700 mb-4">{notice}</p>}
+        <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+          Quando sua cidade atingir o número mínimo de empreendedores, você receberá o convite por e-mail.
+        </p>
+        <p className="text-sm text-gray-500 font-medium">
+          📤 Compartilhe com outros empreendedores para acelerar a abertura!
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <form id="waitlist-form" onSubmit={handleSubmit} className="space-y-4 p-6">
+      <input id="wl-website" name="website" type="text" value={form.website}
+        onChange={e => set('website', e.target.value)}
+        aria-hidden="true" tabIndex={-1} autoComplete="off"
+        className="sr-only" />
+      <h3 className="text-xl font-black text-gray-900 mb-1">Entrar na Lista de Espera</h3>
+      <p className="text-gray-500 text-sm mb-4">Cadastro 100% gratuito • Sem spam • Dados protegidos por LGPD</p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2">
+          <input id="wl-name" required value={form.full_name}
+            onChange={e => set('full_name', e.target.value)}
+            placeholder="Seu nome completo *"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+        </div>
+        <div className="sm:col-span-2">
+          <input id="wl-email" type="email" required value={form.email}
+            onChange={e => set('email', e.target.value)}
+            placeholder="Seu melhor e-mail *"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+        </div>
+        <div>
+          <input id="wl-city" required value={form.city}
+            onChange={e => set('city', e.target.value)}
+            placeholder="Cidade *"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+        </div>
+        <div className="relative">
+          <select id="wl-state" required value={form.state}
+            onChange={e => set('state', e.target.value)}
+            className="w-full appearance-none px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+            <option value="">Estado *</option>
+            {BRAZILIAN_UF_CODES.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        </div>
+        <div className="sm:col-span-2 relative">
+          <select id="wl-category" value={form.category_id}
+            onChange={e => set('category_id', e.target.value)}
+            className="w-full appearance-none px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white">
+            <option value="">Segmento (opcional)</option>
+            {CATEGORIES_FORM.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+        </div>
+      </div>
+
+      {/* Tem empresa? */}
+      <label htmlFor="wl-company" className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
+        <input id="wl-company" type="checkbox" checked={form.has_company}
+          onChange={e => set('has_company', e.target.checked)}
+          className="w-5 h-5 rounded accent-green-600" />
+        <div>
+          <p className="text-sm font-semibold text-gray-800">Tenho uma empresa</p>
+          <p className="text-xs text-gray-400">Profissionais autônomos também são bem-vindos</p>
+        </div>
+        <Building2 className="w-5 h-5 text-gray-300 ml-auto" />
+      </label>
+
+      {/* Carta de Princípios */}
+      <label htmlFor="wl-terms" className="flex items-start gap-3 p-3 rounded-xl border-2 border-green-200 bg-green-50 cursor-pointer">
+        <input id="wl-terms" type="checkbox" required checked={form.accepted_terms}
+          onChange={e => set('accepted_terms', e.target.checked)}
+          className="w-5 h-5 rounded accent-green-600 mt-0.5 shrink-0" />
+        <p className="text-sm text-gray-700 leading-relaxed">
+          Li e concordo com a{' '}
+          <a href="#principios" className="font-bold text-green-700 underline">Carta de Princípios</a>{' '}
+          da comunidade <strong>Desconto do Dono</strong> e com a{' '}
+          <Link href="/privacidade" className="font-bold text-green-700 underline">Política de Privacidade</Link>{' '}
+          (LGPD). Entendo que não há coleta de dados políticos. *
+        </p>
+      </label>
+
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
+          <ShieldCheck className="w-4 h-4 shrink-0" /> {error}
+        </div>
+      )}
+
+      <button id="btn-waitlist-submit" type="submit" disabled={loading}
+        className="w-full py-4 rounded-2xl text-green-950 font-black text-base transition-all hover:brightness-110 hover:shadow-xl disabled:opacity-60 flex items-center justify-center gap-2"
+        style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}>
+        {loading
+          ? <><Loader2 className="w-5 h-5 animate-spin" /> Cadastrando...</>
+          : <><Zap className="w-5 h-5" /> Quero minha vaga gratuita!</>
+        }
+      </button>
+      <p className="text-xs text-center text-gray-400">🔒 Seus dados são protegidos por LGPD. Zero spam.</p>
+    </form>
+  )
+}
+
+// ============================================================
+// COMPONENTE RANKING
+// ============================================================
+function CityRanking() {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? MOCK_RANKING : MOCK_RANKING.slice(0, 5)
+
+  return (
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-50 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-green-600" />
+          <h3 className="font-black text-gray-900">Cidades na Frente</h3>
+        </div>
+        <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-full">
+          🔄 Tempo real
+        </span>
+      </div>
+
+      <div className="divide-y divide-gray-50">
+        {visible.map((city, i) => (
+          <div key={`${city.city}-${city.state}`} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm font-black shrink-0 ${
+              i === 0 ? 'text-yellow-700 bg-yellow-100' :
+              i === 1 ? 'text-gray-600 bg-gray-100' :
+              i === 2 ? 'text-orange-600 bg-orange-100' :
+              'text-gray-500 bg-gray-50'
+            }`}>
+              {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                <span className="font-semibold text-gray-900 text-sm truncate">{city.city}, {city.state}</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {city.companies_count} empresas · {city.total} empreendedores
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-lg font-black text-gray-900">{city.total.toLocaleString('pt-BR')}</p>
+              <div className="w-20 h-1.5 rounded-full bg-gray-100 mt-1">
+                <div className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.round((city.total / MOCK_RANKING[0].total) * 100)}%`,
+                    background: 'linear-gradient(90deg, #009B3A, #FEDF00)',
+                  }} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button onClick={() => setExpanded(!expanded)}
+        className="w-full py-3 text-sm font-semibold text-green-700 hover:bg-green-50 transition-colors flex items-center justify-center gap-1.5 border-t border-gray-50">
+        {expanded
+          ? <><ChevronUp className="w-4 h-4" /> Ver menos</>
+          : <><ChevronDown className="w-4 h-4" /> Ver todas as cidades</>
+        }
+      </button>
+    </div>
+  )
+}
 
 // ============================================================
 // PÁGINA PRINCIPAL (LANDING PAGE)
@@ -56,7 +319,7 @@ export default function LandingPage() {
 
       {/* ===== HERO ===== */}
       <section className="relative overflow-hidden py-16 md:py-24 px-4 bg-slate-900">
-        {/* Overlay com brilho radial verde escuro (#005C2D) centralizado */}
+        {/* Overlay com brilho radial verde escuro (#005C2D) centralizado para tom executivo e premium */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -94,9 +357,9 @@ export default function LandingPage() {
 
               <div className="flex flex-wrap gap-4 mb-8">
                 {[
-                  { Icon: Users, text: 'Conta gratuita' },
-                  { Icon: MapPin, text: 'Conexões por cidade e segmento' },
-                  { Icon: MessageCircle, text: 'Chat dentro da plataforma' },
+                  { Icon: ShieldCheck, text: 'Empresas verificadas' },
+                  { Icon: Lock, text: 'Privacidade & LGPD' },
+                  { Icon: Award, text: 'Clube de descontos exclusivo' },
                 ].map(({ Icon, text }) => (
                   <div key={text} className="flex items-center gap-2 text-gray-300 text-sm font-medium">
                     <Icon className="w-4 h-4 text-yellow-400" /> {text}
@@ -105,48 +368,78 @@ export default function LandingPage() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  href="/cadastro"
+                <a
+                  href="#lista-espera"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-slate-950 text-base hover:brightness-110 hover:shadow-2xl transition-all shadow-lg"
                   style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
                 >
-                  Criar conta grátis <ArrowRight className="w-5 h-5" />
-                </Link>
+                  Quero minha vaga grátis <ArrowRight className="w-5 h-5" />
+                </a>
                 <a
                   href="#principios"
                   className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-bold text-white text-base border-2 border-slate-700 bg-slate-800/60 hover:bg-slate-800 hover:border-yellow-400/60 transition-all backdrop-blur-sm"
                 >
                   Ver Carta de Princípios
                 </a>
-                <Link
-                  href="/planos"
-                  className="inline-flex items-center justify-center px-5 py-3 font-semibold text-white underline underline-offset-4 hover:text-yellow-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-300"
-                >
-                  Comparar planos
-                </Link>
               </div>
             </div>
 
-            <div className="lg:col-span-5">
-              <div className="rounded-3xl border border-yellow-400/30 bg-slate-800/80 p-6 md:p-8 shadow-2xl">
-                <p className="text-yellow-300 font-bold mb-3">Sua cidade. Seu segmento. Sua rede.</p>
-                <h2 className="text-2xl md:text-3xl font-black text-white leading-tight mb-6">
-                  Seja um dos primeiros a criar conexões por aqui.
-                </h2>
-                <ul className="space-y-4 text-gray-200">
-                  <li className="flex items-start gap-3">
-                    <Users className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                    <span>Monte seu perfil profissional sem custo.</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                    <span>Encontre negócios por cidade e área de atuação.</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <MessageCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                    <span>Comece uma conversa pelo chat da plataforma.</span>
-                  </li>
-                </ul>
+            {/* Elementos Visuais e Stats — Networking de Alto Nível */}
+            <div className="lg:col-span-5 space-y-4">
+              <div className="relative rounded-3xl overflow-hidden border border-yellow-400/30 shadow-2xl bg-slate-800/80 backdrop-blur-md group">
+                <div className="relative h-48 w-full overflow-hidden">
+                  <img
+                    src="/images/brasil000.jpg"
+                    alt="Empreendedorismo e Networking no Brasil"
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 brightness-90"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+                  
+                  <div className="absolute top-3 left-3 px-3 py-1.5 rounded-full bg-slate-950/80 border border-yellow-400/50 backdrop-blur-sm text-yellow-400 text-xs font-bold flex items-center gap-1.5">
+                    <BadgeCheck className="w-3.5 h-3.5 text-yellow-400" />
+                    Rede Empresarial Verificada
+                  </div>
+                </div>
+
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-white font-black text-lg leading-tight">Aliança de Empreendedores</h3>
+                      <p className="text-gray-400 text-xs mt-0.5">Conexões diretas, éticas e de alto valor</p>
+                    </div>
+                    <div className="flex -space-x-2 overflow-hidden">
+                      <div className="inline-block h-8 w-8 rounded-full ring-2 ring-yellow-400/50 overflow-hidden bg-slate-700">
+                        <img src="/images/networking-1.jpg" alt="Membro" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="inline-block h-8 w-8 rounded-full ring-2 ring-yellow-400/50 overflow-hidden bg-slate-700">
+                        <img src="/images/networking-2.jpg" alt="Membro" className="h-full w-full object-cover" />
+                      </div>
+                      <div className="inline-flex items-center justify-center h-8 w-8 rounded-full ring-2 ring-yellow-400/50 bg-green-700 text-yellow-400 text-xs font-black">
+                        +2k
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Grid de estatísticas rápidas */}
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-700/60">
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/50">
+                      <p className="text-xl font-black text-yellow-400">14</p>
+                      <p className="text-gray-400 text-xs">Segmentos Estratégicos</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/50">
+                      <p className="text-xl font-black text-yellow-400">2.800+</p>
+                      <p className="text-gray-400 text-xs">Empresas na Lista</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/50">
+                      <p className="text-xl font-black text-white">100%</p>
+                      <p className="text-gray-400 text-xs">Privacidade Garantida</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/50">
+                      <p className="text-xl font-black text-green-400">0%</p>
+                      <p className="text-gray-400 text-xs">Taxa de Cadastro</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -165,16 +458,16 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
             {
-              step: '01', icon: '📝', title: 'Crie seu perfil gratuito',
-              desc: 'Informe sua cidade e área de atuação para apresentar seu negócio.',
+              step: '01', icon: '📝', title: 'Cadastre-se na lista',
+              desc: 'Insira seu nome, cidade e segmento. Concorde com nossa Carta de Princípios.',
             },
             {
-              step: '02', icon: '🔎', title: 'Explore a rede',
-              desc: 'Encontre empresas, profissionais e oportunidades na plataforma.',
+              step: '02', icon: '🏙️', title: 'Sua cidade chega ao mínimo',
+              desc: 'Quando houver empreendedores suficientes na sua cidade, ela é "aberta".',
             },
             {
-              step: '03', icon: '💬', title: 'Inicie uma conversa',
-              desc: 'Use o chat para começar a criar novas conexões profissionais.',
+              step: '03', icon: '🎁', title: 'Resgate descontos',
+              desc: 'Diretório de empresas, clube de descontos exclusivos e contatos verificados.',
             },
           ].map((step) => (
             <div key={step.step} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden">
@@ -187,31 +480,45 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== COMEÇAR AGORA ===== */}
-      <section id="comecar" className="py-16 px-4">
+      {/* ===== FORMULÁRIO + RANKING ===== */}
+      <section id="lista-espera" className="py-16 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-black text-gray-900 mb-3">Sua próxima conexão pode começar hoje</h2>
-            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Crie sua conta gratuita, encontre empreendedores da sua região e comece uma conversa hoje.
-            </p>
+            <h2 className="text-3xl font-black text-gray-900 mb-3">Reserve sua Vaga</h2>
+            <p className="text-gray-500 text-lg">Gratuito • Sem compromisso • Cancele quando quiser</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-center gap-3">
-            <Link
-              href="/cadastro"
-              className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-green-950 transition-all hover:brightness-110 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
-              style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
-            >
-              Criar conta grátis <ArrowRight className="w-5 h-5" />
-            </Link>
-            <Link
-              href="/categorias"
-              className="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-bold text-green-800 border border-green-200 hover:bg-green-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
-            >
-              Explorar empresas
-            </Link>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+            {/* Formulário */}
+            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+              <WaitlistForm />
             </div>
+
+            {/* Ranking */}
+            <div className="space-y-4">
+              <CityRanking />
+              {/* Mini card de benefícios */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Star className="w-5 h-5 text-yellow-500" />
+                  <h4 className="font-black text-gray-900">O que você ganha</h4>
+                </div>
+                <ul className="space-y-2">
+                  {[
+                    'Diretório de empresas da sua cidade',
+                    'Clube de descontos exclusivos',
+                    'Chat privado para negociações',
+                    'Perfil com selo de verificado',
+                    'Acesso a 14 segmentos de negócio',
+                  ].map(b => (
+                    <li key={b} className="flex items-center gap-2 text-sm text-gray-700">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" /> {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -253,41 +560,63 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ===== PREVIEW DO CLUBE DE BENEFÍCIOS ===== */}
       <section className="py-16 px-4 bg-white">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-black text-gray-900 mb-3">
-            Tem um negócio para apresentar?
-          </h2>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-7">
-            Crie seu perfil, publique seus serviços e conheça profissionais que também estão construindo negócios.
-          </p>
-          <Link
-            href="/cadastro"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-green-950 transition-all hover:brightness-110 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
-            style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
-          >
-            Começar gratuitamente <ArrowRight className="w-5 h-5" />
-          </Link>
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-yellow-700 bg-yellow-100 text-sm font-semibold mb-4">
+              <Star className="w-4 h-4" /> Clube de Benefícios
+            </div>
+            <h2 className="text-3xl font-black text-gray-900 mb-3">Membros que Oferecem Mais</h2>
+            <p className="text-gray-500 text-lg">Descontos exclusivos entre empreendedores verificados</p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { title: 'Desconto em Software CRM', pct: 30, category: 'Desenvolvedores', author: 'TechPro BR' },
+              { title: 'Consultoria Financeira Grátis', pct: 100, category: 'Financeiras', author: 'FinancePro MG' },
+              { title: '15% em Publicidade Digital', pct: 15, category: 'Marketing', author: 'AdsMax SP' },
+            ].map((b) => (
+              <div key={b.title} className="relative bg-gradient-to-br from-green-50 to-white rounded-2xl p-5 border border-green-100">
+                <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full text-white text-xs font-black"
+                  style={{ background: 'linear-gradient(135deg, #009B3A, #005C2D)' }}>
+                  -{b.pct}%
+                </div>
+                <BadgeCheck className="w-6 h-6 text-green-600 mb-2" />
+                <h4 className="font-black text-gray-900 text-sm mb-1 pr-14">{b.title}</h4>
+                <p className="text-xs text-gray-400 mb-3">{b.author} · {b.category}</p>
+                <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <Lock className="w-3 h-3" /> Exclusivo para membros
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <a href="#lista-espera"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-green-950 transition-all hover:brightness-110 hover:shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}>
+              Quero acessar os benefícios <ArrowRight className="w-5 h-5" />
+            </a>
+          </div>
         </div>
       </section>
-
-      <FAQSection />
 
       {/* ===== FOOTER CTA ===== */}
       <section className="py-12 px-4"
         style={{ background: 'linear-gradient(135deg, #005C2D 0%, #009B3A 60%, #002776 100%)' }}>
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl font-black text-white mb-4">
-            Comece a criar conexões hoje
+            Sua cidade está esperando por você
           </h2>
           <p className="text-white/80 mb-8">
-            Crie uma conta gratuita e encontre empreendedores da sua cidade e área de atuação.
+            Cada cadastro aproxima sua cidade da abertura. Compartilhe e acelere o processo!
           </p>
-          <Link href="/cadastro"
+          <a href="#lista-espera"
             className="inline-flex items-center gap-2 px-10 py-4 rounded-2xl font-black text-green-950 text-base transition-all hover:brightness-110 hover:shadow-xl"
             style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}>
-            <Zap className="w-5 h-5" /> Criar conta grátis
-          </Link>
+            <Zap className="w-5 h-5" /> Reservar minha vaga grátis
+          </a>
         </div>
       </section>
     </main>

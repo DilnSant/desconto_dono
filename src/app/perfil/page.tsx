@@ -11,36 +11,24 @@ import ProfileGallery from '@/components/profile/ProfileGallery'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
 import { ESTADOS_BR } from '@/lib/constants/categories'
-import ServiceCoverageEditor from '@/components/geography/ServiceCoverageEditor'
-import ProfileSegmentsEditor from '@/components/profiles/ProfileSegmentsEditor'
-import { getSubcategoryCategoryLookup } from '@/lib/categories/catalog'
-import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
-import { normalizeStoredPlanType, type PlanType } from '@/lib/plans/entitlements'
-import {
-  validateCoverageSelection,
-  validateProfileSegments,
-  type CoverageSelection,
-  type ProfileSegmentSelection,
-} from '@/lib/profiles/coverage'
-import type { Municipality } from '@/lib/geography/municipalities'
 import { getInitials } from '@/lib/utils/helpers'
-import type { ProfileWithCategory } from '@/types/database'
+import {
+  hydrateCategorySelection,
+  selectPrimaryCategory,
+  selectPrimarySubcategory,
+  toggleCategory,
+  toggleSubcategory,
+  type ProfileCategorySelection,
+} from '@/lib/profile/category-selection'
+import type { Category, Profile, Subcategory } from '@/types/database'
 
 export default function PerfilPage() {
   const router = useRouter()
-  const [profile, setProfile] = useState<ProfileWithCategory | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
-  const [plan, setPlan] = useState<PlanType>('Gratuito')
-  const [coverage, setCoverage] = useState<CoverageSelection>({
-    scope: 'municipalities',
-    municipalities: [],
-  })
-  const [segments, setSegments] = useState<ProfileSegmentSelection>({ segments: [] })
-  const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
-  const avatarInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState({
     full_name: '', business_name: '', bio: '', city: '',
@@ -50,118 +38,84 @@ export default function PerfilPage() {
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [coverFile, setCoverFile] = useState<File | null>(null)
+
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
+  const [categorySelection, setCategorySelection] = useState<ProfileCategorySelection>({
+    categoryIds: [],
+    subcategoryIds: [],
+    primaryCategoryId: null,
+    primarySubcategoryId: null,
+  })
+
+  const subcategoryCategoryById = subcategories.reduce<Record<string, string>>((map, subcategory) => {
+    map[subcategory.id] = subcategory.category_id
+    return map
+  }, {})
 
   useEffect(() => {
-    let active = true
+    let cancelled = false
     const load = async () => {
+      setLoading(true)
+      setError('')
       try {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError) throw authError
-        if (!user) {
-          router.push('/login')
-          return
-        }
+        if (!user) { router.replace('/login'); return }
 
-        const [profileResult, planResult, areaResult, categoryResult, subcategoryResult] = await Promise.all([
+        const [profileResult, categoryResult, subcategoryResult] = await Promise.all([
           db.from('profiles').select('*').eq('id', user.id).single(),
-          db.rpc('get_effective_plan', { p_profile_id: user.id }),
-          db.from('profile_service_areas')
-            .select('ibge_code, municipality_name, state_code, is_national, declared_non_presential, selection_order')
-            .eq('profile_id', user.id)
-            .order('selection_order'),
-          db.from('profile_categories')
-            .select('id, category_id, selection_order')
-            .eq('profile_id', user.id)
-            .order('selection_order'),
-          db.from('profile_subcategories')
-            .select('profile_category_id, subcategory_id, selection_order')
-            .order('selection_order'),
+          db.from('categories').select('*').order('name'),
+          db.from('subcategories').select('*').order('name'),
         ])
 
-        const loadError =
-          profileResult.error ??
-          planResult.error ??
-          areaResult.error ??
-          categoryResult.error ??
-          subcategoryResult.error
-        if (loadError) throw loadError
-        if (!profileResult.data) throw new Error('Perfil não encontrado.')
+        if (profileResult.error) throw profileResult.error
+        if (categoryResult.error) throw categoryResult.error
+        if (subcategoryResult.error) throw subcategoryResult.error
+        if (!profileResult.data) throw new Error('PROFILE_NOT_FOUND')
 
-        const data = profileResult.data
-        setProfile(data as ProfileWithCategory)
-        setPlan(normalizeStoredPlanType(String(planResult.data)))
+        const profileData: Profile = profileResult.data
+        const categoryData: Category[] = categoryResult.data ?? []
+        const subcategoryData: Subcategory[] = subcategoryResult.data ?? []
+        const parentBySubcategory = subcategoryData.reduce<Record<string, string>>((map, subcategory) => {
+          map[subcategory.id] = subcategory.category_id
+          return map
+        }, {})
+        const hydratedSelection = hydrateCategorySelection(profileData)
+        const validSelection = hydratedSelection.primaryCategoryId
+          ? selectPrimaryCategory(hydratedSelection, hydratedSelection.primaryCategoryId, parentBySubcategory)
+          : { ...hydratedSelection, primarySubcategoryId: null }
+
+        if (cancelled) return
+        setProfile(profileData)
+        setCategories(categoryData)
+        setSubcategories(subcategoryData)
+        setCategorySelection(validSelection)
         setForm({
-          full_name: data.full_name || '',
-          business_name: data.business_name || '',
-          bio: data.bio || '',
-          city: data.city || '',
-          state: data.state || '',
-          website_url: data.website_url || '',
-          instagram_url: data.instagram_url || '',
-          email_public: data.email_public || '',
-          whatsapp: data.whatsapp || '',
+          full_name: profileData.full_name || '',
+          business_name: profileData.business_name || '',
+          bio: profileData.bio || '',
+          city: profileData.city || '',
+          state: profileData.state || '',
+          website_url: profileData.website_url || '',
+          instagram_url: profileData.instagram_url || '',
+          email_public: profileData.email_public || '',
+          whatsapp: profileData.whatsapp || '',
         })
-
-        const areaRows = areaResult.data ?? []
-        const nationalArea = areaRows.find((area: { is_national: boolean }) => area.is_national)
-        if (nationalArea) {
-          setCoverage({
-            scope: 'national',
-            declaredNonPresential: nationalArea.declared_non_presential,
-          })
-        } else {
-          const municipalities: Municipality[] = areaRows
-            .filter((area: { is_national: boolean }) => !area.is_national)
-            .map((area: {
-              ibge_code: string
-              municipality_name: string
-              state_code: string
-            }) => ({
-              ibgeCode: area.ibge_code,
-              name: area.municipality_name,
-              stateCode: area.state_code,
-            }))
-          setCoverage({ scope: 'municipalities', municipalities })
-        }
-
-        const savedCategories = categoryResult.data ?? []
-        const savedSubcategories = subcategoryResult.data ?? []
-        if (savedCategories.length > 0) {
-          setSegments({
-            segments: savedCategories.map((category: {
-              id: string
-              category_id: string
-            }, index: number) => ({
-              categoryId: category.category_id,
-              subcategoryIds: savedSubcategories
-                .filter((subcategory: { profile_category_id: string }) => subcategory.profile_category_id === category.id)
-                .map((subcategory: { subcategory_id: string }) => subcategory.subcategory_id),
-              isPrimary: category.category_id === data.category_id || index === 0,
-            })),
-          })
-        } else if (data.category_id) {
-          setSegments({
-            segments: [{
-              categoryId: data.category_id,
-              subcategoryIds: data.subcategory_id ? [data.subcategory_id] : [],
-              isPrimary: true,
-            }],
-          })
-        }
       } catch (loadError) {
-        console.error('[PERFIL] Falha ao carregar perfil ou cobertura', loadError)
-        if (active) {
-          setError('Não foi possível carregar seus dados de atuação. Verifique a estrutura de cobertura do Supabase e tente novamente.')
-        }
+        console.error('Falha ao carregar perfil:', loadError)
+        if (!cancelled) setError('Não foi possível carregar seu perfil. Tente novamente.')
       } finally {
-        if (active) setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     void load()
-    return () => {
-      active = false
-    }
-  }, [router])
+    return () => { cancelled = true }
+  }, [router, loadAttempt])
 
   const handleAvatarSelect = (file: File) => {
     const url = URL.createObjectURL(file)
@@ -169,84 +123,31 @@ export default function PerfilPage() {
     setAvatarPreview(url)
   }
 
-  const uploadAvatarImage = async (file: File, userId: string): Promise<string> => {
+  const uploadImage = async (file: File, bucket: string, userId: string): Promise<string> => {
     const ext = file.name.split('.').pop()
     const path = `${userId}/${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
-    if (error) throw error
-    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
+    if (error) throw new Error('PROFILE_IMAGE_UPLOAD_FAILED')
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path)
     return data.publicUrl
   }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-
-    if (categoriesError) { setError(categoriesError); return }
-    if (segments.segments.length === 0) { setError('Selecione pelo menos um segmento.'); return }
-    if (segments.segments.some((segment) => !categories.some((category) => category.id === segment.categoryId))) {
-      setError('Selecione categorias válidas do catálogo.')
-      return
-    }
-
-    const coverageResult = validateCoverageSelection(plan, coverage)
-    if (!coverageResult.valid) { setError(coverageResult.errors.join(' ')); return }
-    const segmentResult = validateProfileSegments(
-      plan,
-      segments,
-      getSubcategoryCategoryLookup(categories),
-    )
-    if (!segmentResult.valid) { setError(segmentResult.errors.join(' ')); return }
-
+    setSuccess(false)
     setSaving(true)
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser()
       if (authError) throw authError
-      if (!user) {
-        router.push('/login')
-        return
-      }
+      if (!user) { setError('Sua sessão expirou.'); return }
 
-      const serviceAreas = coverage.scope === 'national'
-        ? [{
-            isNational: true,
-            declaredNonPresential: coverage.declaredNonPresential,
-            selectionOrder: 0,
-          }]
-        : coverage.municipalities.map((municipality, selectionOrder) => ({
-            ibgeCode: municipality.ibgeCode,
-            name: municipality.name,
-            stateCode: municipality.stateCode,
-            isNational: false,
-            declaredNonPresential: false,
-            selectionOrder,
-          }))
-      const orderedSegments = [...segments.segments].sort(
-        (left, right) => Number(right.isPrimary) - Number(left.isPrimary),
-      )
+      let avatar_url = profile?.avatar_url ?? null
+      let cover_url = profile?.cover_url ?? null
+      if (avatarFile) avatar_url = await uploadImage(avatarFile, 'avatars', user.id)
+      if (coverFile) cover_url = await uploadImage(coverFile, 'covers', user.id)
 
-      const { error: coverageError } = await db.rpc('save_profile_coverage', {
-        p_service_areas: serviceAreas,
-        p_segments: orderedSegments.map((segment, selectionOrder) => ({
-          categoryId: segment.categoryId,
-          selectionOrder,
-          subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
-            subcategoryId,
-            selectionOrder: subcategoryOrder,
-          })),
-        })),
-        p_declared_non_presential:
-          coverage.scope === 'national' && coverage.declaredNonPresential,
-      })
-      if (coverageError) throw coverageError
-
-      const avatar_url = avatarFile
-        ? await uploadAvatarImage(avatarFile, user.id)
-        : profile?.avatar_url ?? null
-
-      const { error: updateError } = await db
-        .from('profiles')
-        .update({
+      const profileUpdates: Partial<Profile> = {
         full_name: form.full_name,
         business_name: form.business_name || null,
         bio: form.bio || null,
@@ -256,21 +157,25 @@ export default function PerfilPage() {
         instagram_url: form.instagram_url || null,
         email_public: form.email_public || null,
         whatsapp: form.whatsapp || null,
+        category_ids: categorySelection.categoryIds,
+        subcategory_ids: categorySelection.subcategoryIds,
+        primary_category_id: categorySelection.primaryCategoryId,
+        primary_subcategory_id: categorySelection.primarySubcategoryId,
+        category_id: categorySelection.primaryCategoryId,
+        subcategory_id: categorySelection.primarySubcategoryId,
         avatar_url,
-      })
-      .eq('id', user.id)
+        cover_url,
+      }
 
+      const { error: updateError } = await db.from('profiles').update(profileUpdates).eq('id', user.id)
       if (updateError) throw updateError
-      setProfile((current) => current ? { ...current, ...form, avatar_url } : current)
+
+      setProfile((current) => current ? { ...current, ...profileUpdates } : current)
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (saveError) {
-      console.error('[PERFIL] Falha ao salvar perfil ou cobertura', saveError)
-      setError(
-        saveError instanceof Error
-          ? `Não foi possível salvar o perfil: ${saveError.message}`
-          : 'Não foi possível salvar o perfil. Tente novamente.',
-      )
+      console.error('Falha ao salvar:', saveError)
+      setError('Não foi possível salvar o perfil.')
     } finally {
       setSaving(false)
     }
@@ -284,8 +189,22 @@ export default function PerfilPage() {
     )
   }
 
+  if (!profile) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <div role="alert" className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
+          <p>{error || 'Não foi possível carregar seu perfil.'}</p>
+          <button type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+            className="mt-4 rounded-lg bg-red-700 px-4 py-2 font-semibold text-white">
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const update = (field: string, value: string) =>
-    setForm((p) => ({ ...p, [field]: value }))
+    setForm((current) => ({ ...current, [field]: value }))
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -302,7 +221,7 @@ export default function PerfilPage() {
                 <Image src={avatarPreview || profile!.avatar_url!} alt="Avatar" width={88} height={88}
                   className="rounded-2xl border-4 border-white shadow-lg object-cover" />
               ) : (
-                <div className="w-22 w-[88px] h-[88px] rounded-2xl border-4 border-white shadow-lg flex items-center justify-center text-white text-2xl font-black"
+                <div className="w-[88px] h-[88px] rounded-2xl border-4 border-white shadow-lg flex items-center justify-center text-white text-2xl font-black"
                   style={{ background: 'linear-gradient(135deg, #009B3A, #005C2D)' }}>
                   {getInitials(form.full_name || 'ON')}
                 </div>
@@ -378,24 +297,111 @@ export default function PerfilPage() {
           </div>
         </div>
 
-        <ServiceCoverageEditor
-          plan={plan}
-          value={coverage}
-          onChange={setCoverage}
-          legacyLocation={{ city: form.city, state: form.state }}
-        />
-
         {/* ===== ÁREA DE ATUAÇÃO ===== */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
-          <h2 className="font-black text-gray-800 text-lg">Segmentos de atuação</h2>
-          <ProfileSegmentsEditor
-            categories={categories}
-            loading={categoriesLoading}
-            catalogError={categoriesError}
-            plan={plan}
-            value={segments}
-            onChange={setSegments}
-          />
+          <h2 className="font-black text-gray-800 text-lg">Área de Atuação</h2>
+          <p className="text-sm text-gray-500">
+            Selecione suas áreas e marque uma categoria e uma subcategoria principais.
+          </p>
+          {categories.length === 0 ? (
+            <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+              Nenhuma categoria está disponível no momento.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {categories.map((category) => {
+                const isCategorySelected = categorySelection.categoryIds.includes(category.id)
+                const categorySubcategories = subcategories.filter(
+                  (subcategory) => subcategory.category_id === category.id
+                )
+
+                return (
+                  <div key={category.id} className="rounded-2xl border border-gray-100 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <label htmlFor={`category-${category.id}`} className="flex items-center gap-3 font-semibold text-gray-800">
+                        <input
+                          id={`category-${category.id}`}
+                          type="checkbox"
+                          checked={isCategorySelected}
+                          onChange={(event) => setCategorySelection((current) => toggleCategory(
+                            current,
+                            category.id,
+                            event.target.checked,
+                            subcategoryCategoryById
+                          ))}
+                          className="h-4 w-4 accent-green-700"
+                        />
+                        {category.name}
+                      </label>
+                      <label htmlFor={`primary-category-${category.id}`} className="flex items-center gap-2 text-sm text-gray-600">
+                        <input
+                          id={`primary-category-${category.id}`}
+                          type="radio"
+                          name="primary-category"
+                          checked={categorySelection.primaryCategoryId === category.id}
+                          disabled={!isCategorySelected}
+                          onChange={() => setCategorySelection((current) => selectPrimaryCategory(
+                            current,
+                            category.id,
+                            subcategoryCategoryById
+                          ))}
+                          className="h-4 w-4 accent-green-700"
+                        />
+                        Principal
+                      </label>
+                    </div>
+
+                    {isCategorySelected && categorySubcategories.length > 0 && (
+                      <div className="ml-3 mt-4 space-y-3 border-l-2 border-gray-100 pl-4">
+                        {categorySubcategories.map((subcategory) => {
+                          const isSubcategorySelected = categorySelection.subcategoryIds.includes(subcategory.id)
+
+                          return (
+                            <div key={subcategory.id} className="flex flex-wrap items-center justify-between gap-3">
+                              <label htmlFor={`subcategory-${subcategory.id}`} className="flex items-center gap-3 text-sm text-gray-700">
+                                <input
+                                  id={`subcategory-${subcategory.id}`}
+                                  type="checkbox"
+                                  checked={isSubcategorySelected}
+                                  onChange={(event) => setCategorySelection((current) => toggleSubcategory(
+                                    current,
+                                    subcategory.id,
+                                    event.target.checked,
+                                    subcategoryCategoryById
+                                  ))}
+                                  className="h-4 w-4 accent-green-700"
+                                />
+                                {subcategory.name}
+                              </label>
+                              <label htmlFor={`primary-subcategory-${subcategory.id}`} className="flex items-center gap-2 text-xs text-gray-500">
+                                <input
+                                  id={`primary-subcategory-${subcategory.id}`}
+                                  type="radio"
+                                  name="primary-subcategory"
+                                  checked={categorySelection.primarySubcategoryId === subcategory.id}
+                                  disabled={
+                                    !isSubcategorySelected
+                                    || categorySelection.primaryCategoryId !== category.id
+                                  }
+                                  onChange={() => setCategorySelection((current) => selectPrimarySubcategory(
+                                    current,
+                                    subcategory.id,
+                                    subcategoryCategoryById
+                                  ))}
+                                  className="h-4 w-4 accent-green-700"
+                                />
+                                Subcategoria principal
+                              </label>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* ===== CONTATO ===== */}
