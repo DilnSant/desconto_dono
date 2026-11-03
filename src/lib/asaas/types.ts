@@ -27,6 +27,17 @@ export type AsaasPaymentStatus =
   | 'DUNNING_RECEIVED'
   | 'AWAITING_RISK_ANALYSIS'
 
+export type AsaasPayment = {
+  id: string
+  customer: string
+  subscription?: string
+  externalReference?: string
+  billingType: AsaasBillingType
+  status: AsaasPaymentStatus
+  confirmedDate?: string
+  paymentDate?: string
+}
+
 // ─── Customer ────────────────────────────────────────────────────────────────
 
 export type AsaasCreateCustomerInput = {
@@ -63,6 +74,25 @@ export type AsaasCreateSubscriptionInput = {
   }
 }
 
+export type AsaasCreateCheckoutInput = {
+  billingTypes: ['CREDIT_CARD']
+  chargeTypes: ['RECURRENT']
+  minutesToExpire: number
+  externalReference: string
+  callback: { successUrl: string; cancelUrl: string; expiredUrl: string }
+  items: Array<{ name: string; description?: string; quantity: number; value: number }>
+  customer?: string
+  subscription: { cycle: 'MONTHLY'; nextDueDate: string }
+}
+
+export type AsaasCheckout = {
+  id: string
+  status: 'ACTIVE' | 'PAID' | 'CANCELED' | 'EXPIRED'
+  externalReference?: string
+}
+
+export type AsaasCreateCheckoutResponse = { id: string }
+
 export type AsaasSubscription = {
   id: string
   customer: string
@@ -89,7 +119,9 @@ export type AsaasPaymentCheckoutSession = {
 // ─── Webhook ──────────────────────────────────────────────────────────────────
 
 export type AsaasWebhookPayload = {
+  id?: string
   event: string
+  checkout?: { id: string; status: 'ACTIVE' | 'PAID' | 'CANCELED' | 'EXPIRED'; externalReference?: string }
   payment?: {
     id: string
     customer: string

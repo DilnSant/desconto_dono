@@ -36,3 +36,11 @@ test('migration revokes legacy public waitlist policies without deleting stored 
   assert.ok(schema.includes('DROP POLICY IF EXISTS "waitlist_public_read" ON public.waitlist'))
   assert.doesNotMatch(schema, /DROP TABLE[^;]*public\.waitlist|TRUNCATE[^;]*public\.waitlist/i)
 })
+
+test('landing no longer renders waitlist fields or reports a queue position', () => {
+  const landing = readFileSync(new URL('../src/components/landing/LandingPage.tsx', import.meta.url), 'utf8')
+  const header = readFileSync(new URL('../src/components/layout/Header.tsx', import.meta.url), 'utf8')
+  assert.doesNotMatch(landing, /WaitlistForm|waitlist-form|Entrar na Lista de Espera|fila da sua cidade/i)
+  assert.match(landing, /href="\/cadastro"/)
+  assert.match(header, /href="\/login"/)
+})

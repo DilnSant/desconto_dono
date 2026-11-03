@@ -4,6 +4,10 @@ import type {
   AsaasCustomer,
   AsaasSubscription,
   AsaasPaymentCheckoutSession,
+  AsaasCheckout,
+  AsaasCreateCheckoutInput,
+  AsaasCreateCheckoutResponse,
+  AsaasPayment,
 } from './types'
 
 const BASE_URLS = {
@@ -12,8 +16,32 @@ const BASE_URLS = {
 } as const
 
 function getAsaasBaseUrl(): string {
-  const env = process.env.NEXT_PUBLIC_ASAAS_ENV === 'production' ? 'production' : 'sandbox'
+  const env = process.env.ASAAS_ENV === 'production' ? 'production' : 'sandbox'
   return BASE_URLS[env]
+}
+
+export async function createAsaasCheckout(input: AsaasCreateCheckoutInput): Promise<AsaasCreateCheckoutResponse> {
+  return asaasFetch<AsaasCreateCheckoutResponse>('/checkouts', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export async function getAsaasCheckout(checkoutId: string): Promise<AsaasCheckout> {
+  return asaasFetch<AsaasCheckout>(`/checkouts/${encodeURIComponent(checkoutId)}`)
+}
+
+export async function getAsaasPayment(paymentId: string): Promise<AsaasPayment> {
+  return asaasFetch<AsaasPayment>(`/payments/${encodeURIComponent(paymentId)}`)
+}
+
+export async function getAsaasSubscription(subscriptionId: string): Promise<AsaasSubscription> {
+  return asaasFetch<AsaasSubscription>(`/subscriptions/${encodeURIComponent(subscriptionId)}`)
+}
+
+export function getAsaasCheckoutUrl(checkoutId: string): string {
+  const host = process.env.ASAAS_ENV === 'production' ? 'www.asaas.com' : 'sandbox.asaas.com'
+  return `https://${host}/checkoutSession/show?id=${encodeURIComponent(checkoutId)}`
 }
 
 function getAsaasApiKey(): string {
@@ -37,10 +65,7 @@ async function asaasFetch<T>(
   })
 
   if (!res.ok) {
-    let body: unknown
-    try { body = await res.json() } catch { body = null }
-    console.error('[ASAAS] Erro na API:', res.status, body)
-    throw new Error(`Asaas API error ${res.status}: ${JSON.stringify(body)}`)
+    throw new Error(`Asaas API error ${res.status}`)
   }
 
   return res.json() as Promise<T>

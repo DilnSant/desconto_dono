@@ -15,7 +15,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16">
           {/* Coluna 1 — Sobre */}
           <div className="space-y-4">
-            <Link href="/" className="inline-flex items-center gap-2.5 group">
+            <div className="flex flex-row items-center gap-6">
+            <Link href="/" className="inline-flex shrink-0 items-center gap-2.5 group">
               <Image
                 src="/images/LogoTransp..png"
                 alt="Desconto do Dono"
@@ -29,6 +30,7 @@ export default function Footer() {
               Conectamos empreendedores de direita para fortalecer negócios locais e transformar boas parcerias em contratos confiáveis.
               Nossa plataforma aproxima quem produz, gera empregos e movimenta a economia brasileira.
             </p>
+            </div>
             <a href="mailto:faleconosco@descontododono.com.br" className="inline-flex text-sm text-yellow-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-300">
               faleconosco@descontododono.com.br
             </a>

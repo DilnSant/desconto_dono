@@ -56,7 +56,7 @@ test('public plan page explains ad prices and independent verification without u
   assert.match(page, /preço do produto ou serviço anunciado.*não.*cobrança da plataforma/i)
   assert.match(page, /empresa verificada.*não.*plano/i)
   assert.doesNotMatch(page, /Premium|anual|vídeo|destaque|analytics|suporte 24h|alterações ilimitadas/i)
-  assert.doesNotMatch(page, /asaas|checkout/i)
+  assert.match(page, /CheckoutButton/)
 })
 
 test('legal contact uses the corporate address', () => {

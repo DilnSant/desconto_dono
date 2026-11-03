@@ -129,7 +129,7 @@ export default async function PlanosPage() {
         <div>
           <h2 id="plan-terms-title" className="text-lg font-bold text-gray-950">O que cada preço significa</h2>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">
-            "Grátis", "Fixo" e "Negociável" indicam o preço do produto ou serviço anunciado, não uma cobrança da plataforma.
+            “Grátis”, “Fixo” e “Negociável” indicam o preço do produto ou serviço anunciado, não uma cobrança da plataforma.
             A assinatura dos planos pagos é mensal e pode ser cancelada a qualquer momento.
           </p>
         </div>

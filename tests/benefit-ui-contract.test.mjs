@@ -5,15 +5,11 @@ import test from 'node:test'
 const source = (relativePath) =>
   readFileSync(new URL(relativePath, import.meta.url), 'utf8')
 
-test('only fictional benefits are marked as examples and disabled', () => {
+test('benefits page never substitutes fictional offers for live database results', () => {
   const page = source('../src/app/beneficios/page.tsx')
-  const feed = source('../src/app/beneficios/BeneficiosFeed.tsx')
-  const mockBenefits = page.match(/const MOCK_BENEFITS = \[([\s\S]*?)\n\]/)?.[1]
-
-  assert.ok(mockBenefits, 'mock benefits array should exist')
-  assert.equal([...mockBenefits.matchAll(/\bis_example:\s*true/g)].length, 6)
-  assert.match(feed, /disabled=\{benefit\.is_example === true\}/)
-  assert.match(feed, /disabled:opacity-50/)
+  assert.doesNotMatch(page, /MOCK_BENEFITS|Empresa Exemplo|is_example/)
+  assert.match(page, /Falha ao carregar ofertas públicas/)
+  assert.match(page, /Ainda não há benefícios ativos/)
 })
 
 test('benefits can display an optional location', () => {

@@ -186,9 +186,11 @@ processo.
 
 ### Regras comerciais e de estado
 
-- Somente cobrança mensal no lançamento via checkout hospedado; cartão e Pix
-  estão disponíveis. O checkout hospedado atual do Asaas não oferece boleto;
-  boleto fica fora desta etapa e exigirá uma decisão/fluxo separado no futuro.
+- Somente cobrança mensal no lançamento via checkout hospedado com cartão de
+  crédito. O checkout recorrente atual do Asaas aceita cartão; Pix e boleto não
+  estão disponíveis para esta recorrência. Outros meios exigem um fluxo e uma
+  decisão comercial separados. Referência: [Checkout with Subscription
+  (Recurring), documentação oficial do Asaas](https://docs.asaas.com/docs/checkout-with-subscription-recurring).
 - Assinatura criada, mas ainda não paga, permanece Gratuito.
 - O evento Asaas `CHECKOUT_PAID`, autenticado e validado pelo estado atual do
   checkout, confirma a contratação inicial. Eventos de pagamento e assinatura
@@ -222,8 +224,8 @@ Antes de habilitar cobranças reais, o proprietário deverá:
 4. Aplicar a migration aditiva no SQL Editor do Supabase e conferir as políticas
    RLS.
 5. Configurar os eventos de checkout, pagamento e assinatura necessários e
-   validar contratação, confirmação, renovação, atraso, cancelamento e
-   reativação em sandbox antes de produção.
+   validar contratação recorrente por cartão, confirmação, renovação, atraso,
+   cancelamento e reativação em sandbox antes de produção.
 
 ## Lista de espera, e-mail e comunicação
 

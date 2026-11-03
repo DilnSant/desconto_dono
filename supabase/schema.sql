@@ -194,12 +194,12 @@ CREATE POLICY "categories_public_read"    ON public.categories    FOR SELECT USI
 CREATE POLICY "subcategories_public_read" ON public.subcategories FOR SELECT USING (true);
 
 -- Profiles
-CREATE POLICY "profiles_public_read"  ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_owner_select" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);
 CREATE POLICY "profiles_owner_insert" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_owner_update" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Listings
-CREATE POLICY "listings_public_read"  ON public.listings FOR SELECT USING (is_active = true);
+CREATE POLICY "listings_owner_select" ON public.listings FOR SELECT TO authenticated USING (auth.uid() = user_id);
 CREATE POLICY "listings_owner_all"    ON public.listings FOR ALL   USING (auth.uid() = user_id);
 
 -- Benefits

@@ -1,23 +1,28 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
 import {
   createAsaasCustomer,
   findAsaasCustomerByExternalRef,
-  createAsaasSubscription,
-  getSubscriptionPaymentLink,
+  createAsaasCheckout,
+  getAsaasCheckoutUrl,
 } from '@/lib/asaas/client'
+import type { AsaasCreateCheckoutResponse } from '@/lib/asaas/types'
 import { getPlanMonthlyPriceCents, type PlanType } from '@/lib/plans/entitlements'
 
 const ALLOWED_PLANS: PlanType[] = ['Essencial', 'Profissional']
 
-function nextIsoDate(): string {
-  const d = new Date()
-  d.setDate(d.getDate() + 1)
-  return d.toISOString().slice(0, 10) // YYYY-MM-DD
+function nextDueDate(): string {
+  const date = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  return date.toISOString().slice(0, 19).replace('T', ' ')
 }
 
 export async function POST(request: Request) {
+  const sessionClient = await createSupabaseServerClient()
+  const { data: { user } } = await sessionClient.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Autenticação necessária.' }, { status: 401 })
+
   // 1. Ler e validar body
   let body: unknown
   try { body = await request.json() } catch {
@@ -29,8 +34,8 @@ export async function POST(request: Request) {
   if (typeof planType !== 'string' || !ALLOWED_PLANS.includes(planType as PlanType)) {
     return NextResponse.json({ error: 'Plano inválido.' }, { status: 400 })
   }
-  if (typeof profileId !== 'string' || !profileId) {
-    return NextResponse.json({ error: 'profileId obrigatório.' }, { status: 400 })
+  if (typeof profileId !== 'string' || profileId !== user.id) {
+    return NextResponse.json({ error: 'Perfil inválido.' }, { status: 403 })
   }
 
   const plan = planType as PlanType
@@ -42,7 +47,7 @@ export async function POST(request: Request) {
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, full_name, email, plan_type')
-      .eq('id', profileId)
+      .eq('id', user.id)
       .maybeSingle()
 
     if (profileError || !profile) {
@@ -50,12 +55,17 @@ export async function POST(request: Request) {
     }
 
     // 3. Verificar se já tem assinatura ativa
-    const { data: existingSub } = await supabase
+    const { data: existingSub, error: existingSubError } = await supabase
       .from('subscriptions')
       .select('id, status, plan_type')
       .eq('profile_id', profileId)
       .in('status', ['PENDING', 'ACTIVE', 'PAST_DUE'])
       .maybeSingle()
+
+    if (existingSubError) {
+      console.error('[CHECKOUT] Não foi possível consultar a assinatura existente:', existingSubError.message)
+      return NextResponse.json({ error: 'Não foi possível validar sua assinatura agora.' }, { status: 503 })
+    }
 
     if (existingSub) {
       return NextResponse.json(
@@ -78,52 +88,63 @@ export async function POST(request: Request) {
 
     // 5. Criar referência externa única para a assinatura
     const externalReference = `sub:${profileId}:${plan}:${Date.now()}`
-
-    // 6. Criar Subscription no Asaas
-    const priceCents = getPlanMonthlyPriceCents(plan)
-    const subscription = await createAsaasSubscription({
-      customer: asaasCustomer.id,
-      billingType: 'UNDEFINED', // Deixa o cliente escolher (PIX ou Cartão)
-      cycle: 'MONTHLY',
-      value: priceCents / 100,
-      nextDueDate: nextIsoDate(),
-      description: `Desconto do Dono — Plano ${plan}`,
-      externalReference,
-      redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/planos?sucesso=1`,
-      checkoutSession: {
-        enabledPaymentMethods: ['CREDIT_CARD', 'PIX'],
-      },
-    })
-
-    // 7. Salvar assinatura PENDING no Supabase
     const planTypeForDb = plan as 'Essencial' | 'Profissional'
-    const { error: insertError } = await supabase.from('subscriptions').insert({
-      profile_id: profileId,
-      plan_type: planTypeForDb,
-      asaas_subscription_id: subscription.id,
-      asaas_customer_id: asaasCustomer.id,
-      external_reference: externalReference,
-      billing_type: 'CREDIT_CARD',
-      status: 'PENDING',
-    })
+    const { data: pendingSubscription, error: insertError } = await supabase
+      .from('subscriptions')
+      .insert({
+        profile_id: profileId,
+        plan_type: planTypeForDb,
+        asaas_customer_id: asaasCustomer.id,
+        external_reference: externalReference,
+        billing_type: null,
+        status: 'PENDING',
+      })
+      .select('id')
+      .single()
 
-    if (insertError) {
-      console.error('[CHECKOUT] Erro ao salvar subscription:', insertError)
-      return NextResponse.json({ error: 'Erro interno ao criar assinatura.' }, { status: 500 })
+    if (insertError || !pendingSubscription) {
+      console.error('[CHECKOUT] Erro ao reservar assinatura pendente:', insertError?.message)
+      return NextResponse.json({ error: 'Não foi possível iniciar a assinatura.' }, { status: 409 })
+    }
+
+    // 6. Criar checkout recorrente hospedado no Asaas
+    const priceCents = getPlanMonthlyPriceCents(plan)
+    let checkout: AsaasCreateCheckoutResponse
+    try {
+      checkout = await createAsaasCheckout({
+      customer: asaasCustomer.id,
+      billingTypes: ['CREDIT_CARD'],
+      chargeTypes: ['RECURRENT'],
+      minutesToExpire: 1440,
+      externalReference,
+      callback: {
+        successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/planos?retorno=sucesso`,
+        cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/planos?retorno=cancelado`,
+        expiredUrl: `${process.env.NEXT_PUBLIC_APP_URL}/planos?retorno=expirado`,
+      },
+      items: [{ name: `Plano ${plan} — Desconto do Dono`, quantity: 1, value: priceCents / 100 }],
+      subscription: { cycle: 'MONTHLY', nextDueDate: nextDueDate() },
+      })
+    } catch (checkoutError) {
+      await supabase.from('subscriptions')
+        .update({ status: 'FAILED' })
+        .eq('id', pendingSubscription.id)
+      throw checkoutError
+    }
+
+    const { error: checkoutLinkError } = await supabase
+      .from('subscriptions')
+      .update({ asaas_checkout_id: checkout.id })
+      .eq('id', pendingSubscription.id)
+    if (checkoutLinkError) {
+      console.error('[CHECKOUT] Erro ao associar checkout à assinatura:', checkoutLinkError.message)
+      return NextResponse.json({ error: 'Checkout criado, mas não foi possível finalizar a assinatura.' }, { status: 503 })
     }
 
     // 8. Obter link de pagamento
-    const paymentLink =
-      subscription.paymentLink ??
-      (await getSubscriptionPaymentLink(subscription.id))
-
-    if (!paymentLink) {
-      return NextResponse.json({ error: 'Erro ao obter link de pagamento.' }, { status: 500 })
-    }
-
-    return NextResponse.json({ paymentLink }, { status: 201 })
+    return NextResponse.json({ paymentLink: getAsaasCheckoutUrl(checkout.id) }, { status: 201 })
   } catch (err) {
-    console.error('[CHECKOUT] Erro inesperado:', err)
+    console.error('[CHECKOUT] Erro inesperado:', err instanceof Error ? err.name : 'UnknownError')
     return NextResponse.json({ error: 'Erro interno do servidor.' }, { status: 500 })
   }
 }

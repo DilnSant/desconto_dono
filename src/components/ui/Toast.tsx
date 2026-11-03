@@ -63,7 +63,7 @@ export function Toast({ message, type = 'info', duration = 4000, onClose }: Toas
 }
 
 // Hook para usar toasts
-import { createContext, useContext, useCallback, useRef } from 'react'
+import { createContext, useContext, useCallback } from 'react'
 
 interface ToastItem {
   id: string

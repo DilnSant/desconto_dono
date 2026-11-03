@@ -2,81 +2,101 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { Star, Plus } from 'lucide-react'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { db as serverDb } from '@/lib/supabase/db'
 import BeneficiosFeed from './BeneficiosFeed'
+import type { Category, PublicProfile } from '@/types/database'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Clube de Descontos — Desconto do Dono',
-  description: 'Descontos exclusivos oferecidos por empresas e empreendedores verificados do Desconto do Dono.',
+  description: 'Descontos oferecidos por empresas e empreendedores da comunidade Desconto do Dono.',
 }
-
-const MOCK_BENEFITS = [
-  {
-    id: 'b1', title: '30% Off em Software CRM Completo',
-    description: 'Acesso completo ao nosso CRM por 30% menos. Ideal para gestão de clientes e pipeline de vendas.',
-    discount_pct: 30, discount_val: null, author: 'Carlos Mendes', business: 'TechPro BR',
-    category: 'Desenvolvedores', valid_until: '2026-12-31', redemptions: 12,
-    whatsapp: '11999999999', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null, is_example: true,
-  },
-  {
-    id: 'b2', title: 'Primeira Consultoria Financeira 100% Grátis',
-    description: 'Uma hora de consultoria personalizada para reorganizar as finanças do seu negócio sem custo algum.',
-    discount_pct: 100, discount_val: null, author: 'Ana Rodrigues', business: 'FinancePro MG',
-    category: 'Financeiras', valid_until: '2026-11-30', redemptions: 28,
-    whatsapp: '31888888888', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null, is_example: true,
-  },
-  {
-    id: 'b3', title: '15% em Toda Publicidade Digital',
-    description: 'Google Ads, Meta Ads e TikTok Ads com 15% de desconto. Campanha mínima R$ 500.',
-    discount_pct: 15, discount_val: null, author: 'Pedro Lima', business: 'AdsMax PR',
-    category: 'Marketing', valid_until: '2026-12-15', redemptions: 7,
-    whatsapp: '41777777777', avatar_url: null, is_verified: false, video_embed_url: null,
-    link_url: null, is_example: true,
-  },
-  {
-    id: 'b4', title: 'Design de Logo Profissional — R$ 200 Off',
-    description: 'Identidade visual completa com desconto especial para membros. Logo + manual de marca.',
-    discount_pct: null, discount_val: 200, author: 'Juliana Souza', business: 'DesignHouse SP',
-    category: 'Marketing', valid_until: '2026-11-15', redemptions: 4,
-    whatsapp: '11666666666', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null, is_example: true,
-  },
-  {
-    id: 'b5', title: '20% Off em Planos de Academia',
-    description: 'Musculação, crossfit e hidroginástica. Válido para contratos semestrais.',
-    discount_pct: 20, discount_val: null, author: 'Marcos Oliveira', business: 'FitZone Salvador',
-    category: 'Lazer', valid_until: '2027-01-31', redemptions: 19,
-    whatsapp: '71555555555', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null, is_example: true,
-  },
-  {
-    id: 'b6', title: 'Contabilidade MEI por R$ 59/mês',
-    description: 'Abertura de empresa grátis + BPO financeiro por preço especial para membros da comunidade.',
-    discount_pct: null, discount_val: 40, author: 'Fernanda Costa', business: 'ContaFácil BA',
-    category: 'Financeiras', valid_until: '2026-12-31', redemptions: 34,
-    whatsapp: '71444444444', avatar_url: null, is_verified: true, video_embed_url: null,
-    link_url: null, is_example: true,
-  },
-]
 
 export default async function BeneficiosPage() {
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  let benefits = MOCK_BENEFITS
+  let benefits: Array<{
+    id: string
+    title: string
+    description: string
+    discount_pct: number | null
+    discount_val: number | null
+    author: string
+    business: string
+    category: string
+    valid_until: string | null
+    redemptions: number
+    avatar_url: string | null
+    is_verified: boolean
+    link_url: string | null
+  }> = []
+  let queryError = false
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data, error } = await serverDb
       .from('benefits')
-      .select('*, profiles:author_id(id,full_name,business_name,avatar_url,is_verified), categories:category_id(name)')
+      .select('id, title, description, discount_pct, discount_val, author_id, category_id, valid_until, redemptions, link_url')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-    if (data && data.length > 0) benefits = data
-  } catch { /* usa mock */ }
+    if (error) throw error
+
+    const authorIds = Array.from(new Set((data ?? []).map((benefit: { author_id: string }) => benefit.author_id)))
+    const categoryIds = Array.from(new Set((data ?? []).flatMap((benefit: { category_id: string | null }) => benefit.category_id ? [benefit.category_id] : [])))
+    const [profilesResult, categoriesResult] = await Promise.all([
+      authorIds.length
+        ? serverDb.from('profiles_public').select('id, full_name, business_name, avatar_url, is_verified, public_whatsapp').in('id', authorIds)
+        : { data: [], error: null },
+      categoryIds.length
+        ? serverDb.from('categories').select('id, name').in('id', categoryIds)
+        : { data: [], error: null },
+    ])
+    if (profilesResult.error) throw profilesResult.error
+    if (categoriesResult.error) throw categoriesResult.error
+
+    const profiles = new Map(
+      ((profilesResult.data ?? []) as Pick<PublicProfile, 'id' | 'full_name' | 'business_name' | 'avatar_url' | 'is_verified' | 'public_whatsapp'>[])
+        .map((profile) => [profile.id, profile]),
+    )
+    const categories = new Map(
+      ((categoriesResult.data ?? []) as Pick<Category, 'id' | 'name'>[])
+        .map((category) => [category.id, category.name]),
+    )
+    benefits = (data ?? []).flatMap((benefit: {
+      id: string
+      title: string
+      description: string
+      discount_pct: number | null
+      discount_val: number | null
+      author_id: string
+      category_id: string | null
+      valid_until: string | null
+      redemptions: number
+      link_url: string | null
+    }) => {
+      const profile = profiles.get(benefit.author_id)
+      if (!profile) return []
+      return [{
+        id: benefit.id,
+        title: benefit.title,
+        description: benefit.description,
+        discount_pct: benefit.discount_pct,
+        discount_val: benefit.discount_val,
+        author: profile.full_name,
+        business: profile.business_name || profile.full_name,
+        category: benefit.category_id ? categories.get(benefit.category_id) || 'Outros' : 'Outros',
+        valid_until: benefit.valid_until,
+        redemptions: benefit.redemptions,
+        avatar_url: profile.avatar_url,
+        is_verified: profile.is_verified,
+        link_url: benefit.link_url,
+      }]
+    })
+  } catch (error) {
+    console.error('[BENEFÍCIOS] Falha ao carregar ofertas públicas', error)
+    queryError = true
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -90,7 +110,7 @@ export default async function BeneficiosPage() {
             </div>
             <div>
               <h1 className="text-2xl font-black text-gray-900">Clube de Descontos</h1>
-              <p className="text-gray-500 text-sm">Descontos exclusivos de empresas verificadas</p>
+              <p className="text-gray-500 text-sm">Descontos oferecidos por empresas da comunidade</p>
             </div>
           </div>
         </div>
@@ -114,8 +134,18 @@ export default async function BeneficiosPage() {
         ))}
       </div>
 
-      {/* Feed de Benefícios com Modal de Lead */}
-      <BeneficiosFeed benefits={benefits} />
+      {queryError ? (
+        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800">
+          Não foi possível carregar os benefícios. Atualize a página para tentar novamente.
+        </div>
+      ) : benefits.length > 0 ? (
+        <BeneficiosFeed benefits={benefits} />
+      ) : (
+        <div className="rounded-2xl border border-gray-100 bg-white px-6 py-10 text-center">
+          <p className="font-semibold text-gray-800">Ainda não há benefícios ativos.</p>
+          <p className="mt-2 text-sm text-gray-600">Você pode publicar uma oferta para a comunidade.</p>
+        </div>
+      )}
 
       {/* CTA oferecer */}
       <div className="mt-10 rounded-3xl p-8 text-center"

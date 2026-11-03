@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const migrationPath = new URL('../supabase/schema_v4.sql', import.meta.url)
+const baseSchemaPath = new URL('../supabase/schema.sql', import.meta.url)
 
 function expectMatch(source, pattern, message) {
   assert.ok(pattern.test(source), message)
@@ -88,6 +89,12 @@ test('schema v4 preserves data while enforcing entitlement and public-access con
   expectMatch(sql, /p_event_at \+ interval '3 days'/i, 'Past-due subscriptions must receive exactly three days of grace')
   expectMatch(sql, /p_event_at <= subscription_row\.last_event_at/i, 'Stale provider events must be rejected')
   expectNoMatch(sql, /SECURITY DEFINER/i, 'Migration functions must not bypass RLS')
+})
+
+test('fresh schema never grants anonymous reads of private base profile or listing tables', () => {
+  const sql = readFileSync(baseSchemaPath, 'utf8')
+  expectNoMatch(sql, /CREATE POLICY[^;]*ON public\.profiles[^;]*FOR SELECT[^;]*USING\s*\(\s*true\s*\)/i, 'Profiles must not be publicly selectable')
+  expectNoMatch(sql, /CREATE POLICY[^;]*ON public\.listings[^;]*FOR SELECT[^;]*USING\s*\(\s*is_active\s*=\s*true\s*\)/i, 'Listings must not expose all active base-table columns')
 })
 
 test('gallery mutation RPCs lock profiles and are restricted to the server role', () => {

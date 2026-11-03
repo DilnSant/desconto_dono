@@ -38,11 +38,9 @@ export default function PerfilPage() {
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [coverFile, setCoverFile] = useState<File | null>(null)
 
   const [loadAttempt, setLoadAttempt] = useState(0)
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const coverInputRef = useRef<HTMLInputElement>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [categorySelection, setCategorySelection] = useState<ProfileCategorySelection>({
@@ -143,9 +141,14 @@ export default function PerfilPage() {
       if (!user) { setError('Sua sessão expirou.'); return }
 
       let avatar_url = profile?.avatar_url ?? null
-      let cover_url = profile?.cover_url ?? null
-      if (avatarFile) avatar_url = await uploadImage(avatarFile, 'avatars', user.id)
-      if (coverFile) cover_url = await uploadImage(coverFile, 'covers', user.id)
+      try {
+        if (avatarFile) avatar_url = await uploadImage(avatarFile, 'avatars', user.id)
+      } catch (uploadError) {
+        if (uploadError instanceof Error && uploadError.message === 'PROFILE_IMAGE_UPLOAD_FAILED') {
+          throw new Error('PROFILE_IMAGE_UPLOAD_FAILED')
+        }
+        throw uploadError
+      }
 
       const profileUpdates: Partial<Profile> = {
         full_name: form.full_name,
@@ -164,7 +167,6 @@ export default function PerfilPage() {
         category_id: categorySelection.primaryCategoryId,
         subcategory_id: categorySelection.primarySubcategoryId,
         avatar_url,
-        cover_url,
       }
 
       const { error: updateError } = await db.from('profiles').update(profileUpdates).eq('id', user.id)
@@ -175,7 +177,9 @@ export default function PerfilPage() {
       setTimeout(() => setSuccess(false), 3000)
     } catch (saveError) {
       console.error('Falha ao salvar:', saveError)
-      setError('Não foi possível salvar o perfil.')
+      setError(saveError instanceof Error && saveError.message === 'PROFILE_IMAGE_UPLOAD_FAILED'
+        ? 'Não foi possível enviar a imagem. Tente novamente.'
+        : 'Não foi possível salvar o perfil.')
     } finally {
       setSaving(false)
     }

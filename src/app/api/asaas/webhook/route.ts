@@ -1,6 +1,8 @@
 import 'server-only'
+import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase/admin'
+import { getAsaasCheckout, getAsaasPayment, getAsaasSubscription } from '@/lib/asaas/client'
 import type { AsaasWebhookPayload } from '@/lib/asaas/types'
 
 // Eventos que ativam o plano
@@ -27,24 +29,25 @@ const HANDLED_EVENTS = new Set([
 
 function verifyWebhookToken(request: Request): boolean {
   const expectedToken = process.env.ASAAS_WEBHOOK_TOKEN
-  if (!expectedToken?.trim()) {
-    console.warn('[WEBHOOK] ASAAS_WEBHOOK_TOKEN não configurado — aceitando sem validação')
-    return true
-  }
+  if (!expectedToken?.trim()) return false
   const receivedToken =
     request.headers.get('asaas-access-token') ??
     request.headers.get('access_token') ??
     request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
 
-  return receivedToken === expectedToken
+  if (!receivedToken) return false
+  const expected = Buffer.from(expectedToken)
+  const received = Buffer.from(receivedToken)
+  return expected.length === received.length && timingSafeEqual(expected, received)
 }
 
 function buildEventKey(payload: AsaasWebhookPayload): string {
   const resourceId =
+    payload.checkout?.id ??
     payload.payment?.id ??
     payload.subscription?.id ??
     'unknown'
-  return `${payload.event}:${resourceId}`
+  return payload.id ?? `${payload.event}:${resourceId}`
 }
 
 export async function POST(request: Request) {
@@ -62,11 +65,69 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 })
   }
 
+  if (!payload || typeof payload !== 'object' || typeof payload.event !== 'string') {
+    return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 })
+  }
+
   const eventType = payload.event?.toUpperCase()
 
   // 3. Ignorar eventos que não precisamos tratar
   if (!HANDLED_EVENTS.has(eventType)) {
     return NextResponse.json({ received: true, processed: false, reason: 'event_ignored' })
+  }
+
+  if (eventType === 'CHECKOUT_PAID') {
+    if (!payload.checkout?.id) {
+      return NextResponse.json({ error: 'Checkout inválido.' }, { status: 400 })
+    }
+    try {
+      const checkout = await getAsaasCheckout(payload.checkout.id)
+      if (checkout.status !== 'PAID') {
+        return NextResponse.json({ received: true, processed: false, reason: 'checkout_not_paid' })
+      }
+      if (payload.checkout.externalReference && checkout.externalReference !== payload.checkout.externalReference) {
+        return NextResponse.json({ error: 'Referência do checkout inválida.' }, { status: 400 })
+      }
+      payload.checkout = checkout
+    } catch {
+      return NextResponse.json({ error: 'Não foi possível validar o checkout.' }, { status: 503 })
+    }
+  }
+
+  if (eventType.startsWith('PAYMENT_')) {
+    if (!payload.payment?.id) return NextResponse.json({ error: 'Pagamento inválido.' }, { status: 400 })
+    try {
+      const payment = await getAsaasPayment(payload.payment.id)
+      const isPaid = payment.status === 'CONFIRMED' || payment.status === 'RECEIVED'
+      if (eventType === 'PAYMENT_OVERDUE' && payment.status !== 'OVERDUE') {
+        return NextResponse.json({ received: true, processed: false, reason: 'payment_not_overdue' })
+      }
+      if ((eventType === 'PAYMENT_CONFIRMED' || eventType === 'PAYMENT_RECEIVED') && !isPaid) {
+        return NextResponse.json({ received: true, processed: false, reason: 'payment_not_confirmed' })
+      }
+      if (payload.payment.subscription && payment.subscription !== payload.payment.subscription) {
+        return NextResponse.json({ error: 'Assinatura do pagamento inválida.' }, { status: 400 })
+      }
+      payload.payment = { ...payload.payment, ...payment }
+    } catch {
+      return NextResponse.json({ error: 'Não foi possível validar o pagamento.' }, { status: 503 })
+    }
+  }
+
+  if (eventType.startsWith('SUBSCRIPTION_')) {
+    if (!payload.subscription?.id) return NextResponse.json({ error: 'Assinatura inválida.' }, { status: 400 })
+    try {
+      const subscription = await getAsaasSubscription(payload.subscription.id)
+      if (
+        (payload.subscription.customer && subscription.customer !== payload.subscription.customer)
+        || (payload.subscription.externalReference && subscription.externalReference !== payload.subscription.externalReference)
+      ) {
+        return NextResponse.json({ error: 'Assinatura inválida.' }, { status: 400 })
+      }
+      payload.subscription = { ...payload.subscription, ...subscription }
+    } catch {
+      return NextResponse.json({ error: 'Não foi possível validar a assinatura.' }, { status: 503 })
+    }
   }
 
   const payment = payload.payment
@@ -76,9 +137,9 @@ export async function POST(request: Request) {
   const asaasCustomerId = payment?.customer ?? subscription?.customer ?? null
   const externalReference =
     payment?.externalReference ?? subscription?.externalReference ?? null
-  const checkoutSessionId = payment?.checkoutSession ?? null
+  const checkoutSessionId = payload.checkout?.id ?? payment?.checkoutSession ?? null
   const billingType = payment?.billingType ?? subscription?.billingType ?? null
-  const providerStatus = subscription?.status ?? null
+  const providerStatus = subscription?.status ?? payload.checkout?.status ?? payment?.status ?? null
 
   // Calcular data de fim do período (próximo vencimento ou +1 mês)
   let periodEnd: string | null = null
@@ -94,7 +155,7 @@ export async function POST(request: Request) {
 
   const eventAt = new Date().toISOString()
   const eventKey = buildEventKey(payload)
-  const resourceId = payment?.id ?? subscription?.id ?? null
+  const resourceId = payload.checkout?.id ?? payment?.id ?? subscription?.id ?? null
 
   try {
     const supabase = createSupabaseAdminClient()

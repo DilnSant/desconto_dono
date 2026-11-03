@@ -19,7 +19,7 @@
 - The browser never receives `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`, or `SUPABASE_SERVICE_ROLE_KEY`.
 - Webhook processing is authenticated, idempotent, replay-safe, and safe for duplicate/out-of-order events.
 - Cancellation stops future charges and preserves benefits through the paid period; overdue invoices have a three-day grace period.
-- Hosted monthly checkout supports only card and Pix for this release; boleto is excluded because the current Asaas hosted-checkout API does not offer it.
+- Hosted monthly recurring checkout supports credit card; Pix and boleto are not supported for this Asaas recurring Checkout flow.
 - Entitlements are evaluated against the current time on every server/database gate: a paid cancellation remains active through `current_period_end`, and a past-due subscription remains active only through `grace_period_ends_at`; a delayed webhook cannot extend access.
 - After downgrade, preserve user data; public/active entitlements follow the destination plan and the grandfathered-ad rule in the spec.
 - Credentials stay server-only and are never logged or pasted into conversation.
@@ -44,8 +44,8 @@
 **Interfaces:**
 - `createAsaasClient(config: AsaasConfig): AsaasClient`.
 - `AsaasConfig = { apiKey: string; environment: 'sandbox' | 'production'; fetchImpl?: typeof fetch }`.
-- `BillingType = 'CREDIT_CARD' | 'PIX'`.
-- `AsaasCheckoutInput` contains the paid plan and fixed amount in centavos, both hosted methods (`billingTypes: ['CREDIT_CARD', 'PIX']`), `chargeTypes: ['RECURRENT']`, `subscription: { cycle: 'MONTHLY' }`, one server-priced item conforming to the current required checkout schema, callback URLs, and the local external reference. Customer data is supplied only when supported/required by the current official checkout documentation; otherwise the hosted checkout collects it. The adapter converts centavos to the provider’s currency value.
+- `BillingType = 'CREDIT_CARD'` for recurring Checkout.
+- `AsaasCheckoutInput` contains the paid plan and fixed amount in centavos, credit card (`billingTypes: ['CREDIT_CARD']`), `chargeTypes: ['RECURRENT']`, `subscription: { cycle: 'MONTHLY' }`, one server-priced item conforming to the current required checkout schema, callback URLs, and the local external reference. Customer data is supplied only when supported/required by the current official checkout documentation; otherwise the hosted checkout collects it. The adapter converts centavos to the provider’s currency value.
 - `CheckoutSession = { checkoutId: string; checkoutUrl: string }`, normalized from the provider response `id` and `link`; do not assume checkout creation returns a subscription ID.
 - `AsaasClient.createCheckout(input: AsaasCheckoutInput): Promise<CheckoutSession>`.
 - `AsaasClient.getCheckout(checkoutId: string): Promise<AsaasCheckout>`.
@@ -60,7 +60,7 @@
   Read the applicable route-handler/server-only guides in `node_modules/next/dist/docs/` and verify current official Asaas hosted-checkout, recurring-payment, authentication, and webhook payload requirements. Do not rely on older API assumptions.
 - [ ] **Step 2: Write failing adapter tests**
 
-  Assert sandbox/production base URL selection, server auth header, exact monthly recurring checkout payload, card/Pix accepted and boleto rejected, provider error propagation, malformed responses, and that credentials never enter request bodies or logs.
+  Assert sandbox/production base URL selection, server auth header, exact monthly recurring checkout payload with card, Pix rejected for recurrence, provider error propagation, malformed responses, and that credentials never enter request bodies or logs.
 - [ ] **Step 3: Run the targeted test**
 
   Run: `node --test tests/asaas-client.test.mjs`
@@ -93,7 +93,7 @@
 
 - [ ] **Step 1: Write failing checkout-service and route tests**
 
-  Assert unauthenticated requests fail, invalid plan fails, client-supplied price/profile/customer IDs are ignored, the server sends the correct monthly recurring price with card and Pix available, and a pending checkout does not set the profile plan.
+  Assert unauthenticated requests fail, invalid plan fails, client-supplied price/profile/customer IDs are ignored, the server sends the correct monthly recurring price with card, and a pending checkout does not set the profile plan.
 - [ ] **Step 2: Run the targeted test**
 
   Run: `node --test tests/billing-checkout.test.mjs`
@@ -103,7 +103,7 @@
   Consume `src/lib/supabase/admin.ts` from the foundation plan. Validate `SUPABASE_SERVICE_ROLE_KEY` and prevent imports from client components. Keep normal user authorization on the request client; use admin access only for privileged subscription writes.
 - [ ] **Step 4: Implement the checkout service and route**
 
-  Derive profile ID from the authenticated Supabase user; use fixed prices R$ 39,90 and R$ 59,90 from server constants; configure the hosted checkout for monthly recurrence with card and Pix; reject a second pending/active subscription; create the pending local row and external reference before checkout; then persist the provider checkout ID. If provider checkout creation fails, mark the local row failed. If persisting the provider response fails, return an explicit error and keep the pending row correlatable by its external reference so a later webhook can reconcile it; do not claim success or create another checkout on retry while the record is unresolved. Do not treat the browser return URL as payment confirmation.
+  Derive profile ID from the authenticated Supabase user; use fixed prices R$ 39,90 and R$ 59,90 from server constants; configure the hosted checkout for monthly card recurrence; reject a second pending/active subscription; create the pending local row and external reference before checkout; then persist the provider checkout ID. If provider checkout creation fails, mark the local row failed. If persisting the provider response fails, return an explicit error and keep the pending row correlatable by its external reference so a later webhook can reconcile it; do not claim success or create another checkout on retry while the record is unresolved. Do not treat the browser return URL as payment confirmation.
 - [ ] **Step 5: Run tests, lint, and type-check**
 
   Run: `node --test tests/billing-checkout.test.mjs`
@@ -177,7 +177,7 @@
 
 - [ ] **Step 1: Write failing UI contract tests**
 
-  Assert the correct plan price and limits, checkout starts only after explicit plan selection, hosted checkout offers card and Pix, a pending subscription displays as pending/Gratuito, cancellation describes the paid-through date, and UI never grants a plan from a return query parameter. In `tests/billing-cancel.test.mjs`, assert unauthenticated/foreign-profile cancellation fails, provider failure leaves local access unchanged, and repeated cancellation is idempotent.
+  Assert the correct plan price and limits, checkout starts only after explicit plan selection, hosted checkout offers monthly credit card recurrence, a pending subscription displays as pending/Gratuito, cancellation describes the paid-through date, and UI never grants a plan from a return query parameter. In `tests/billing-cancel.test.mjs`, assert unauthenticated/foreign-profile cancellation fails, provider failure leaves local access unchanged, and repeated cancellation is idempotent.
 - [ ] **Step 2: Run the targeted test**
 
   Run: `node --test tests/subscription-ui.test.mjs`
@@ -222,7 +222,7 @@
   Expected: PASS.
 - [ ] **Step 3: Document setup without secrets**
 
-  Document `ASAAS_API_KEY`, `ASAAS_ENV`, `ASAAS_WEBHOOK_TOKEN`, server-only Supabase admin access, webhook URL, `CHECKOUT_PAID`, relevant payment and subscription events, card/Pix-only hosted checkout, sandbox test steps, and production activation. Do not add secret values.
+  Document `ASAAS_API_KEY`, `ASAAS_ENV`, `ASAAS_WEBHOOK_TOKEN`, server-only Supabase admin access, webhook URL, `CHECKOUT_PAID`, relevant payment and subscription events, monthly recurring credit-card checkout, sandbox test steps, and production activation. Do not add secret values.
 - [ ] **Step 4: Commit**
 
   `test: valida fluxo de assinatura Asaas`

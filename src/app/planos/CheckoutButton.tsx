@@ -75,7 +75,7 @@ export default function CheckoutButton({ plan, profileId }: Props) {
       <p className="text-center text-xs text-gray-500">
         Pagamento seguro via{' '}
         <span className="font-semibold text-gray-700">Asaas</span>
-        {' · '}PIX ou Cartão de crédito
+        {' · '}Cartão de crédito recorrente
       </p>
     </div>
   )
