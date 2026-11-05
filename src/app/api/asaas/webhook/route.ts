@@ -116,17 +116,22 @@ export async function POST(request: Request) {
 
   if (eventType.startsWith('SUBSCRIPTION_')) {
     if (!payload.subscription?.id) return NextResponse.json({ error: 'Assinatura inválida.' }, { status: 400 })
-    try {
-      const subscription = await getAsaasSubscription(payload.subscription.id)
-      if (
-        (payload.subscription.customer && subscription.customer !== payload.subscription.customer)
-        || (payload.subscription.externalReference && subscription.externalReference !== payload.subscription.externalReference)
-      ) {
-        return NextResponse.json({ error: 'Assinatura inválida.' }, { status: 400 })
+    // Asaas removes a deleted subscription from the resource API. The event is
+    // already authenticated with the shared token, and its identifiers are
+    // checked against the local subscription by apply_asaas_subscription_event.
+    if (eventType !== 'SUBSCRIPTION_DELETED') {
+      try {
+        const subscription = await getAsaasSubscription(payload.subscription.id)
+        if (
+          (payload.subscription.customer && subscription.customer !== payload.subscription.customer)
+          || (payload.subscription.externalReference && subscription.externalReference !== payload.subscription.externalReference)
+        ) {
+          return NextResponse.json({ error: 'Assinatura inválida.' }, { status: 400 })
+        }
+        payload.subscription = { ...payload.subscription, ...subscription }
+      } catch {
+        return NextResponse.json({ error: 'Não foi possível validar a assinatura.' }, { status: 503 })
       }
-      payload.subscription = { ...payload.subscription, ...subscription }
-    } catch {
-      return NextResponse.json({ error: 'Não foi possível validar a assinatura.' }, { status: 503 })
     }
   }
 

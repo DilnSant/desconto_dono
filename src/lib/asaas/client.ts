@@ -11,8 +11,8 @@ import type {
 } from './types'
 
 const BASE_URLS = {
-  sandbox: 'https://sandbox.asaas.com/api/v3',
-  production: 'https://www.asaas.com/api/v3',
+  sandbox: 'https://api-sandbox.asaas.com/v3',
+  production: 'https://api.asaas.com/v3',
 } as const
 
 function getAsaasBaseUrl(): string {
@@ -39,9 +39,15 @@ export async function getAsaasSubscription(subscriptionId: string): Promise<Asaa
   return asaasFetch<AsaasSubscription>(`/subscriptions/${encodeURIComponent(subscriptionId)}`)
 }
 
+export async function deactivateAsaasSubscription(subscriptionId: string): Promise<void> {
+  await asaasFetch<void>(`/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ status: 'INACTIVE' }),
+  })
+}
+
 export function getAsaasCheckoutUrl(checkoutId: string): string {
-  const host = process.env.ASAAS_ENV === 'production' ? 'www.asaas.com' : 'sandbox.asaas.com'
-  return `https://${host}/checkoutSession/show?id=${encodeURIComponent(checkoutId)}`
+  return `https://asaas.com/checkoutSession/show?id=${encodeURIComponent(checkoutId)}`
 }
 
 function getAsaasApiKey(): string {
@@ -67,6 +73,8 @@ async function asaasFetch<T>(
   if (!res.ok) {
     throw new Error(`Asaas API error ${res.status}`)
   }
+
+  if (options.method === 'DELETE' || res.status === 204) return undefined as T
 
   return res.json() as Promise<T>
 }

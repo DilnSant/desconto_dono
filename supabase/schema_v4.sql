@@ -193,7 +193,10 @@ WHERE NOT EXISTS (
     AND (
       (s.status = 'ACTIVE' AND s.current_period_end > statement_timestamp())
       OR (s.status = 'PAST_DUE' AND s.grace_period_ends_at > statement_timestamp())
-      OR (s.status = 'CANCELED' AND s.current_period_end > statement_timestamp())
+      OR (s.status = 'CANCELED' AND (
+        s.current_period_end > statement_timestamp()
+        OR s.grace_period_ends_at > statement_timestamp()
+      ))
     )
 );
 
@@ -371,7 +374,10 @@ BEGIN
       AND (
         (s.status = 'ACTIVE' AND s.current_period_end > statement_timestamp())
         OR (s.status = 'PAST_DUE' AND s.grace_period_ends_at > statement_timestamp())
-        OR (s.status = 'CANCELED' AND s.current_period_end > statement_timestamp())
+        OR (s.status = 'CANCELED' AND (
+          s.current_period_end > statement_timestamp()
+          OR s.grace_period_ends_at > statement_timestamp()
+        ))
       )
     ORDER BY
       CASE s.status
@@ -981,6 +987,7 @@ BEGIN
   END;
   next_grace_period_ends_at := CASE
     WHEN next_status = 'PAST_DUE' THEN p_event_at + interval '3 days'
+    WHEN next_status = 'CANCELED' THEN subscription_row.grace_period_ends_at
     ELSE NULL
   END;
 
@@ -1613,7 +1620,10 @@ LEFT JOIN LATERAL (
     AND (
       (s.status = 'ACTIVE' AND s.current_period_end > statement_timestamp())
       OR (s.status = 'PAST_DUE' AND s.grace_period_ends_at > statement_timestamp())
-      OR (s.status = 'CANCELED' AND s.current_period_end > statement_timestamp())
+      OR (s.status = 'CANCELED' AND (
+        s.current_period_end > statement_timestamp()
+        OR s.grace_period_ends_at > statement_timestamp()
+      ))
     )
   ORDER BY
     CASE s.status
@@ -1670,7 +1680,10 @@ WITH plans AS (
       AND (
         (s.status = 'ACTIVE' AND s.current_period_end > statement_timestamp())
         OR (s.status = 'PAST_DUE' AND s.grace_period_ends_at > statement_timestamp())
-        OR (s.status = 'CANCELED' AND s.current_period_end > statement_timestamp())
+        OR (s.status = 'CANCELED' AND (
+          s.current_period_end > statement_timestamp()
+          OR s.grace_period_ends_at > statement_timestamp()
+        ))
       )
     ORDER BY
       CASE s.status

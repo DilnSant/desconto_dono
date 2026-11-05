@@ -125,6 +125,15 @@ export default async function PlanosPage() {
         </div>
       </section>
 
+      {profileId && (
+        <p className="mt-6 text-center text-sm text-gray-600">
+          Já tem uma assinatura?{' '}
+          <Link href="/assinatura" className="font-semibold text-green-800 underline underline-offset-2">
+            Gerenciar ou cancelar
+          </Link>
+        </p>
+      )}
+
       <section aria-labelledby="plan-terms-title" className="mt-10 grid gap-6 border-t border-gray-200 pt-8 md:grid-cols-2">
         <div>
           <h2 id="plan-terms-title" className="text-lg font-bold text-gray-950">O que cada preço significa</h2>

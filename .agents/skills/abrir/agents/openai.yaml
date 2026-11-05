@@ -1,0 +1,4 @@
+interface:
+  display_name: "Abrir projeto"
+  short_description: "Revise o estado e as pendências do projeto"
+  default_prompt: "Use $abrir para revisar o contexto atual deste repositório."

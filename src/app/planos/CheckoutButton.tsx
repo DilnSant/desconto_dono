@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
 import type { PlanType } from '@/lib/plans/entitlements'
 
 type Props = {
@@ -67,9 +68,14 @@ export default function CheckoutButton({ plan, profileId }: Props) {
       </button>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
-          {error}
-        </p>
+        <div role="alert" className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
+          <p>{error}</p>
+          {error.includes('já possui uma assinatura') && (
+            <Link href="/assinatura" className="mt-1 inline-block font-semibold underline">
+              Gerenciar ou cancelar assinatura
+            </Link>
+          )}
+        </div>
       )}
 
       <p className="text-center text-xs text-gray-500">
