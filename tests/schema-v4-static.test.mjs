@@ -13,6 +13,18 @@ function expectNoMatch(source, pattern, message) {
   assert.ok(!pattern.test(source), message)
 }
 
+test('schema v4 is conflict-free and retains the active profile, benefit, and waitlist contract', () => {
+  const sql = readFileSync(migrationPath, 'utf8')
+  expectNoMatch(sql, /^(<<<<<<<|=======|>>>>>>>)(?:\s|$)/m, 'Migration must not contain unresolved Git conflict markers')
+  expectMatch(sql, /ALTER TABLE public\.benefits[\s\S]*?ADD COLUMN IF NOT EXISTS location_city TEXT/i, 'Benefits must retain their optional city')
+  expectMatch(sql, /ALTER TABLE public\.benefits[\s\S]*?ADD COLUMN IF NOT EXISTS location_state TEXT/i, 'Benefits must retain their optional state')
+  expectMatch(sql, /ADD COLUMN IF NOT EXISTS category_ids UUID\[\] NOT NULL DEFAULT '\{\}'::UUID\[\]/i, 'Profiles must retain the category selection array')
+  expectMatch(sql, /ADD COLUMN IF NOT EXISTS subcategory_ids UUID\[\] NOT NULL DEFAULT '\{\}'::UUID\[\]/i, 'Profiles must retain the subcategory selection array')
+  expectMatch(sql, /UPDATE public\.profiles[\s\S]*?SET category_ids = ARRAY\[category_id\]/i, 'Legacy profile categories must be backfilled without replacing populated arrays')
+  expectNoMatch(sql, /GRANT\s+INSERT\s+ON\s+(?:TABLE\s+)?public\.waitlist\s+TO\s+anon/i, 'Closed waitlist must not regain anonymous inserts')
+  expectNoMatch(sql, /GRANT\s+SELECT\s+ON\s+(?:TABLE\s+)?public\.cities_ranking\s+TO\s+anon/i, 'Closed waitlist ranking must not regain anonymous reads')
+})
+
 test('schema v4 preserves data while enforcing entitlement and public-access contracts', () => {
   assert.ok(existsSync(migrationPath), 'Schema v4 migration must exist')
 

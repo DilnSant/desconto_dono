@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -15,6 +14,54 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END;
 $$;
+
+ALTER TABLE public.benefits
+  ADD COLUMN IF NOT EXISTS location_city TEXT;
+
+ALTER TABLE public.benefits
+  ADD COLUMN IF NOT EXISTS location_state TEXT;
+
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS category_ids UUID[] NOT NULL DEFAULT '{}'::UUID[],
+  ADD COLUMN IF NOT EXISTS subcategory_ids UUID[] NOT NULL DEFAULT '{}'::UUID[],
+  ADD COLUMN IF NOT EXISTS primary_category_id UUID REFERENCES public.categories(id),
+  ADD COLUMN IF NOT EXISTS primary_subcategory_id UUID REFERENCES public.subcategories(id);
+
+DO $backfill$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'profiles'
+      AND column_name = 'category_id'
+  ) THEN
+    EXECUTE $migration$
+      UPDATE public.profiles
+      SET category_ids = ARRAY[category_id],
+          primary_category_id = COALESCE(primary_category_id, category_id)
+      WHERE cardinality(category_ids) = 0
+        AND category_id IS NOT NULL
+    $migration$;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'profiles'
+      AND column_name = 'subcategory_id'
+  ) THEN
+    EXECUTE $migration$
+      UPDATE public.profiles
+      SET subcategory_ids = ARRAY[subcategory_id],
+          primary_subcategory_id = COALESCE(primary_subcategory_id, subcategory_id)
+      WHERE cardinality(subcategory_ids) = 0
+        AND subcategory_id IS NOT NULL
+    $migration$;
+  END IF;
+END
+$backfill$;
 
 CREATE TABLE IF NOT EXISTS public.profile_service_areas (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -160,9 +207,10 @@ CREATE INDEX IF NOT EXISTS listings_owner_entitlement_idx
   ON public.listings(user_id, is_active, grandfathered, updated_at DESC);
 
 INSERT INTO public.profile_categories (profile_id, category_id, selection_order, is_active)
-SELECT p.id, p.category_id, 0, true
+SELECT p.id, selected.category_id, selected.ordinality::integer - 1, true
 FROM public.profiles p
-WHERE p.category_id IS NOT NULL
+CROSS JOIN LATERAL unnest(p.category_ids) WITH ORDINALITY AS selected(category_id, ordinality)
+WHERE selected.category_id IS NOT NULL
 ON CONFLICT (profile_id, category_id) DO NOTHING;
 
 INSERT INTO public.profile_subcategories (
@@ -172,15 +220,15 @@ INSERT INTO public.profile_subcategories (
   selection_order,
   is_active
 )
-SELECT pc.id, p.category_id, p.subcategory_id, 0, true
+SELECT pc.id, sc.category_id, selected.subcategory_id, selected.ordinality::integer - 1, true
 FROM public.profiles p
+ CROSS JOIN LATERAL unnest(p.subcategory_ids) WITH ORDINALITY AS selected(subcategory_id, ordinality)
+JOIN public.subcategories sc
+  ON sc.id = selected.subcategory_id
 JOIN public.profile_categories pc
   ON pc.profile_id = p.id
- AND pc.category_id = p.category_id
-JOIN public.subcategories sc
-  ON sc.id = p.subcategory_id
- AND sc.category_id = p.category_id
-WHERE p.subcategory_id IS NOT NULL
+ AND pc.category_id = sc.category_id
+WHERE selected.subcategory_id IS NOT NULL
 ON CONFLICT (profile_category_id, subcategory_id) DO NOTHING;
 
 UPDATE public.profiles p
@@ -1811,66 +1859,3 @@ REVOKE ALL ON FUNCTION public.guard_profile_entitlements() FROM PUBLIC, anon, au
 REVOKE ALL ON FUNCTION public.enforce_listing_entitlement() FROM PUBLIC, anon, authenticated;
 
 COMMIT;
-=======
-ALTER TABLE public.benefits
-  ADD COLUMN IF NOT EXISTS location_city TEXT;
-
-ALTER TABLE public.benefits
-  ADD COLUMN IF NOT EXISTS location_state TEXT;
-
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS category_ids UUID[] NOT NULL DEFAULT '{}'::UUID[],
-  ADD COLUMN IF NOT EXISTS subcategory_ids UUID[] NOT NULL DEFAULT '{}'::UUID[],
-  ADD COLUMN IF NOT EXISTS primary_category_id UUID REFERENCES public.categories(id),
-  ADD COLUMN IF NOT EXISTS primary_subcategory_id UUID REFERENCES public.subcategories(id);
-
-DO $backfill$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'profiles'
-      AND column_name = 'category_id'
-  ) THEN
-    EXECUTE $migration$
-      UPDATE public.profiles
-      SET category_ids = ARRAY[category_id],
-          primary_category_id = COALESCE(primary_category_id, category_id)
-      WHERE cardinality(category_ids) = 0
-        AND category_id IS NOT NULL
-    $migration$;
-  END IF;
-
-  IF EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'profiles'
-      AND column_name = 'subcategory_id'
-  ) THEN
-    EXECUTE $migration$
-      UPDATE public.profiles
-      SET subcategory_ids = ARRAY[subcategory_id],
-          primary_subcategory_id = COALESCE(primary_subcategory_id, subcategory_id)
-      WHERE cardinality(subcategory_ids) = 0
-        AND subcategory_id IS NOT NULL
-    $migration$;
-  END IF;
-END
-$backfill$;
-
-DROP POLICY IF EXISTS "waitlist_public_read" ON public.waitlist;
-DROP POLICY IF EXISTS "waitlist_public_insert" ON public.waitlist;
-
-REVOKE ALL ON TABLE public.waitlist FROM PUBLIC, anon, authenticated;
-GRANT INSERT ON TABLE public.waitlist TO anon, authenticated;
-
-CREATE POLICY "waitlist_public_insert"
-  ON public.waitlist
-  FOR INSERT
-  TO anon, authenticated
-  WITH CHECK (accepted_terms IS TRUE);
-
-GRANT SELECT ON TABLE public.cities_ranking TO anon, authenticated;
->>>>>>> origin/main
