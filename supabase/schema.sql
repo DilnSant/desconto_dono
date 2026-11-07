@@ -165,6 +165,15 @@ CREATE TABLE IF NOT EXISTS public.messages (
 );
 
 -- ============================================================
+-- GARANTIR COLUNAS CRÍTICAS (caso tabelas já existam)
+-- ============================================================
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS plan_type TEXT DEFAULT 'Gratuito';
+ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE public.benefits ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+
+-- ============================================================
 -- ÍNDICES
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_waitlist_city     ON public.waitlist(city, state);
@@ -190,24 +199,41 @@ ALTER TABLE public.subcategories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.leads         ENABLE ROW LEVEL SECURITY;
 
 -- Categorias: leitura pública
+DROP POLICY IF EXISTS "categories_public_read" ON public.categories;
 CREATE POLICY "categories_public_read"    ON public.categories    FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "subcategories_public_read" ON public.subcategories;
 CREATE POLICY "subcategories_public_read" ON public.subcategories FOR SELECT USING (true);
 
 -- Profiles
+DROP POLICY IF EXISTS "profiles_owner_select" ON public.profiles;
 CREATE POLICY "profiles_owner_select" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "profiles_owner_insert" ON public.profiles;
 CREATE POLICY "profiles_owner_insert" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "profiles_owner_update" ON public.profiles;
 CREATE POLICY "profiles_owner_update" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Listings
+DROP POLICY IF EXISTS "listings_owner_select" ON public.listings;
 CREATE POLICY "listings_owner_select" ON public.listings FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "listings_owner_all" ON public.listings;
 CREATE POLICY "listings_owner_all"    ON public.listings FOR ALL   USING (auth.uid() = user_id);
 
 -- Benefits
+DROP POLICY IF EXISTS "benefits_public_read" ON public.benefits;
 CREATE POLICY "benefits_public_read"  ON public.benefits FOR SELECT USING (is_active = true);
+
+DROP POLICY IF EXISTS "benefits_owner_all" ON public.benefits;
 CREATE POLICY "benefits_owner_all"    ON public.benefits FOR ALL   USING (auth.uid() = author_id);
 
 -- Leads: qualquer pessoa pode inserir, dono da oferta pode ler
+DROP POLICY IF EXISTS "leads_public_insert" ON public.leads;
 CREATE POLICY "leads_public_insert"   ON public.leads FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "leads_author_read" ON public.leads;
 CREATE POLICY "leads_author_read"     ON public.leads FOR SELECT
   USING (
     EXISTS (
@@ -217,8 +243,11 @@ CREATE POLICY "leads_author_read"     ON public.leads FOR SELECT
   );
 
 -- Messages
+DROP POLICY IF EXISTS "messages_participant_read" ON public.messages;
 CREATE POLICY "messages_participant_read"   ON public.messages FOR SELECT
   USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
+
+DROP POLICY IF EXISTS "messages_sender_insert" ON public.messages;
 CREATE POLICY "messages_sender_insert"      ON public.messages FOR INSERT
   WITH CHECK (auth.uid() = sender_id);
 
@@ -230,8 +259,13 @@ RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS profiles_updated_at ON public.profiles;
 CREATE TRIGGER profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS listings_updated_at ON public.listings;
 CREATE TRIGGER listings_updated_at BEFORE UPDATE ON public.listings FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS benefits_updated_at ON public.benefits;
 CREATE TRIGGER benefits_updated_at BEFORE UPDATE ON public.benefits FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- Criar perfil ao registrar usuário (v3: inclui plan_type)
@@ -252,6 +286,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
