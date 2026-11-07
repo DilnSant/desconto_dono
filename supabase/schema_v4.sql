@@ -27,6 +27,24 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS primary_category_id UUID REFERENCES public.categories(id),
   ADD COLUMN IF NOT EXISTS primary_subcategory_id UUID REFERENCES public.subcategories(id);
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'profiles'
+      AND column_name = 'plan_type'
+  ) THEN
+    ALTER TABLE public.profiles ALTER COLUMN plan_type DROP DEFAULT;
+    ALTER TABLE public.profiles ALTER COLUMN plan_type TYPE text USING plan_type::text;
+    ALTER TABLE public.profiles ALTER COLUMN plan_type SET DEFAULT 'Gratuito';
+  ELSE
+    ALTER TABLE public.profiles ADD COLUMN plan_type text NOT NULL DEFAULT 'Gratuito';
+  END IF;
+END;
+$$;
+
 DO $backfill$
 BEGIN
   IF EXISTS (
