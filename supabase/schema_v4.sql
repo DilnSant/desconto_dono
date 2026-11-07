@@ -193,6 +193,12 @@ CREATE TABLE IF NOT EXISTS public.asaas_webhook_events (
 );
 
 ALTER TABLE public.listings
+  ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true;
+
+ALTER TABLE public.listings
+  ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT statement_timestamp();
+
+ALTER TABLE public.listings
   ADD COLUMN IF NOT EXISTS grandfathered boolean;
 
 UPDATE public.listings
