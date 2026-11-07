@@ -1,6 +1,6 @@
 # Pendências para deixar o projeto pronto
 
-Revisado em 05/11/2026. HEAD `b7d73882b1493940ef8fa460dec0568a05ea8b80` (`REGULARIZADA API ASAAS`); branch `agents/update-logo-footer-login-bypass`, sincronizada com seu upstream configurado (`origin/agents/update-logo-footer-login-bypass`).
+Revisado em 06/11/2026. HEAD `dad4aec92c0658f81d5b7a8657253fc4bd6da9b9` (`schema v4`); branch `agents/update-logo-footer-login-bypass` (1 commit à frente de `origin/agents/update-logo-footer-login-bypass`).
 
 ## Sandbox Asaas — chave reconhecida; acesso bloqueado pela lista de IPs
 
@@ -33,16 +33,16 @@ Revisado em 05/11/2026. HEAD `b7d73882b1493940ef8fa460dec0568a05ea8b80` (`REGULA
 - [x] Adicionada gestão da assinatura em `/assinatura` e cancelamento autenticado em `POST /api/asaas/cancel`. O Asaas é definido como `INACTIVE`, mantendo cobranças já emitidas; o acesso respeita período pago ou carência. O evento `SUBSCRIPTION_DELETED` não tenta buscar um recurso removido.
 - [x] Checklist revisado com os resultados desta verificação; segredos não foram copiados nem registrados.
 
-## Validação local (05/11/2026)
+## Validação local (06/11/2026)
 
-- `npm run lint`: passou na validação anterior a esta revisão.
-- `npx tsc --noEmit`: passou.
-- `npm run build -- --webpack`: passou e incluiu `/assinatura` e `/api/asaas/cancel`.
-- Suíte completa `tests/*.test.mjs` com servidor local: 112/112 passaram.
-- Nesta revisão: suíte completa com servidor local 113/113; migration aplicada e reaplicada em PostgreSQL 16 descartável, incluindo verificação do backfill legado; `npx eslint tests/schema-v4-static.test.mjs` e `npx tsc --noEmit` passaram.
-- O runtime local carrega `ASAAS_API_KEY` com prefixo Sandbox e sem `/` no valor. A consulta autenticada de status retornou `403 not_allowed_ip`; a autenticação permanece inconclusiva até liberar o IP de saída. Nenhum fluxo de cobrança foi executado.
-- Supabase respondeu `PGRST205` para as duas views públicas e a relação `subscriptions`. O bundle do site usa a mesma URL Supabase do `.env.local`.
-- Não houve acesso de painel, alteração remota, migration, deploy, cobrança ou ativação de produção nesta revisão.
+- `npm run lint`: passou (0 erros, 0 avisos).
+- `npx tsc --noEmit`: passou (0 erros de tipagem).
+- `npm run build -- --webpack`: passou com 25 rotas estáticas/dinâmicas geradas (incluindo `/assinatura`, `/planos`, `/empresas`, `/termos`, `/privacidade` e rotas de API do Asaas e Resend).
+- Suíte completa `tests/*.test.mjs` com servidor local ativo: 113/113 testes passaram.
+- `supabase/schema_v4.sql`: livre de marcadores de conflito de merge, mantendo contratos de planos, benefícios (`location_city`, `location_state`), perfil multi-categoria/subcategoria e encerramento da waitlist.
+- O runtime local carrega `ASAAS_API_KEY` com prefixo Sandbox e sem `/` no valor. A consulta de status retorna `403 not_allowed_ip` devido à restrição de IP de saída na chave Sandbox.
+- Nenhum segredo, chave ou token foi exposto, copiado ou registrado em logs ou arquivos versionados.
+- Nenhuma migration em banco de produção, cobrança real ou alteração não autorizada foi executada.
 
 ## Referências
 
