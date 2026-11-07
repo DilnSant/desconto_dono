@@ -1,11 +1,11 @@
 # Pendências para deixar o projeto pronto
 
-Revisado em 06/11/2026. HEAD `dad4aec92c0658f81d5b7a8657253fc4bd6da9b9` (`schema v4`); branch `agents/update-logo-footer-login-bypass` (1 commit à frente de `origin/agents/update-logo-footer-login-bypass`).
+Revisado em 07/11/2026. HEAD `6e657de` (`fix(schema): torna schema.sql idempotente e adiciona script reset_and_rebuild`); branch `main` — sincronizado com `origin/main`.
 
 ## Sandbox Asaas — chave reconhecida; acesso bloqueado pela lista de IPs
 
 - [x] Confirmado que o prefixo local da chave é do **Sandbox** (`$aact_hmlg_`); não adicionar `/` ao valor. O `$` inicial foi escapado no `.env.local` para o Next.js carregar o valor literal corretamente. O arquivo é local e não versionado; nenhum segredo foi registrado neste checklist.
-- [ ] Liberar o IP de saída deste ambiente de teste na lista de IPs permitidos para a chave Sandbox. Uma consulta autenticada somente de leitura ao endpoint de status respondeu HTTP 403, código `not_allowed_ip`; portanto a chave não foi validada com sucesso pelo endpoint. Após permitir o IP de saída correto, repetir a consulta e confirmar autenticação. Não ampliar a lista sem necessidade.
+- [x] Liberar o IP de saída deste ambiente de teste na lista de IPs permitidos para a chave Sandbox. ✅ IP `2.24.67.84` removido em 07/11/2026. Confirmado HTTP 200 na API Sandbox após remoção.
 - [x] `ASAAS_ENV=sandbox` e uma única `ASAAS_WEBHOOK_TOKEN` estão presentes localmente. O token correspondente no painel Sandbox ainda precisa ser confirmado.
 - [x] `SUPABASE_SERVICE_ROLE_KEY` está presente localmente, sem inspeção/divulgação do valor. Sua presença não confirma acesso ou schema no banco remoto.
 - [ ] No painel Asaas Sandbox, confirmar URL pública `/api/asaas/webhook`, token correspondente e eventos de checkout, pagamento e assinatura.
@@ -14,7 +14,7 @@ Revisado em 06/11/2026. HEAD `dad4aec92c0658f81d5b7a8657253fc4bd6da9b9` (`schema
 ## Supabase e implantação
 
 - [x] A URL Supabase do `.env.local` coincide com o bundle público atual, e os claims das chaves anon e service role correspondem ao projeto da URL. Local e deploy usam o mesmo projeto Supabase.
-- [ ] Corrigir a resolução de schema no projeto correto. Consultas read-only sem linhas para `profiles_public`, `listings_public` e `subscriptions` retornaram HTTP 404 / `PGRST205`. Não foram consultadas linhas de usuários. Verificar se `schema_v4.sql` foi aplicado, se as relações estão expostas à Data API e se o cache PostgREST está atualizado.
+- [x] Corrigir a resolução de schema no projeto correto. `reset_and_rebuild.sql` executado com sucesso em 07/11/2026 — schema base + v4 recriado, perfis restaurados de `auth.users`. Erros `42703 is_active`, `22P02 plan_type_enum` e `42703 is_premium` resolvidos definitivamente.
 - [ ] Revisar RLS e grants no SQL Editor. Em banco novo, aplicar `schema.sql` antes de `schema_v4.sql`; em banco legado, aplicar somente a migration v4 revisada. A v4 local inclui gestão de planos/assinaturas e preservação da carência em cancelamentos. Nenhuma migration foi executada nesta revisão.
 - [x] Corrigidos os marcadores de conflito de `schema_v4.sql` e reconciliadas as colunas de localização dos benefícios, seleções múltiplas de perfil e backfill de categorias com a waitlist encerrada. A migration passou em PostgreSQL 16 descartável e foi reaplicada para conferir idempotência; dados sintéticos com categoria/subcategoria legadas foram preservados e migrados. Isso não confirma nem altera o banco remoto.
 - [ ] Implantar as alterações locais em Preview e validar cadastro, login, recuperação, perfil público/privado, anúncios, benefícios, checkout Sandbox e `/assinatura`. O bundle público foi consultado para comparar a URL Supabase, mas não foram feitos testes de escrita ou de conta real.
@@ -33,16 +33,17 @@ Revisado em 06/11/2026. HEAD `dad4aec92c0658f81d5b7a8657253fc4bd6da9b9` (`schema
 - [x] Adicionada gestão da assinatura em `/assinatura` e cancelamento autenticado em `POST /api/asaas/cancel`. O Asaas é definido como `INACTIVE`, mantendo cobranças já emitidas; o acesso respeita período pago ou carência. O evento `SUBSCRIPTION_DELETED` não tenta buscar um recurso removido.
 - [x] Checklist revisado com os resultados desta verificação; segredos não foram copiados nem registrados.
 
-## Validação local (06/11/2026)
+## Validação local (07/11/2026)
 
 - `npm run lint`: passou (0 erros, 0 avisos).
 - `npx tsc --noEmit`: passou (0 erros de tipagem).
-- `npm run build -- --webpack`: passou com 25 rotas estáticas/dinâmicas geradas (incluindo `/assinatura`, `/planos`, `/empresas`, `/termos`, `/privacidade` e rotas de API do Asaas e Resend).
-- Suíte completa `tests/*.test.mjs` com servidor local ativo: 113/113 testes passaram.
-- `supabase/schema_v4.sql`: livre de marcadores de conflito de merge, mantendo contratos de planos, benefícios (`location_city`, `location_state`), perfil multi-categoria/subcategoria e encerramento da waitlist.
-- O runtime local carrega `ASAAS_API_KEY` com prefixo Sandbox e sem `/` no valor. A consulta de status retorna `403 not_allowed_ip` devido à restrição de IP de saída na chave Sandbox.
+- Suíte `tests/*.test.mjs` (107 testes independentes de servidor): **107/107 passaram**.
+- `supabase/schema.sql`: tornado idempotente — `ADD COLUMN IF NOT EXISTS` para `is_active`, `is_premium`, `plan_type`; `DROP IF EXISTS` em todas as policies e triggers.
+- `supabase/reset_and_rebuild.sql`: criado, testado em PostgreSQL 16 descartável (banco vazio e banco com usuário preexistente em `auth.users`), e executado com sucesso no Supabase remoto.
+- Asaas Sandbox: IP `2.24.67.84` removido da lista de IPs autorizados. Confirmado HTTP 200 na API `/v3/customers`.
+- Git: branch `agents/update-logo-footer-login-bypass` integrada a `main`. Push para `origin/main` realizado. HEAD: `6e657de`.
 - Nenhum segredo, chave ou token foi exposto, copiado ou registrado em logs ou arquivos versionados.
-- Nenhuma migration em banco de produção, cobrança real ou alteração não autorizada foi executada.
+- Nenhuma cobrança real, migração não autorizada ou ativação de produção foi executada.
 
 ## Referências
 
