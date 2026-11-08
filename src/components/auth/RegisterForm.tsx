@@ -270,8 +270,10 @@ export default function RegisterForm() {
                 <select id="reg-state" value={municipality?.stateCode || ''}
                   onChange={(e) => {
                     const newState = e.target.value;
-                    // Reset municipality if state changes (simplified)
-                    setMunicipality(null);
+                    // Update state code in municipality, clear city name/ibgeCode when state changes
+                    setMunicipality(prev =>
+                      prev ? { ...prev, stateCode: newState, name: '', ibgeCode: '' } : { stateCode: newState, name: '', ibgeCode: '' }
+                    )
                   }}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all">
                   <option value="">Selecione</option>
