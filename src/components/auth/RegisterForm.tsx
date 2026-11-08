@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
 import MunicipalitySelect from '@/components/geography/MunicipalitySelect'
+import { ESTADOS_BR } from '@/lib/constants/categories'
 import ProfileSegmentsEditor from '@/components/profiles/ProfileSegmentsEditor'
 import { getSubcategoryCategoryLookup } from '@/lib/categories/catalog'
 import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
@@ -263,13 +264,30 @@ export default function RegisterForm() {
         {/* STEP 1: Localização */}
         {step === 1 && (
           <div className="space-y-4">
-            <MunicipalitySelect
-              id="reg-city"
-              label="Cidade de atuação"
-              value={municipality}
-              onChange={setMunicipality}
-              required
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="reg-state" className="block text-sm font-semibold text-gray-700 mb-1.5">Estado *</label>
+                <select id="reg-state" value={municipality?.stateCode || ''}
+                  onChange={(e) => {
+                    const newState = e.target.value;
+                    // Reset municipality if state changes (simplified)
+                    setMunicipality(null);
+                  }}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all">
+                  <option value="">Selecione</option>
+                  {ESTADOS_BR.map(uf => <option key={uf.sigla} value={uf.sigla}>{uf.sigla}</option>)}
+                </select>
+              </div>
+              <div>
+                <MunicipalitySelect
+                  id="reg-city"
+                  label="Cidade *"
+                  value={municipality}
+                  onChange={setMunicipality}
+                  required
+                />
+              </div>
+            </div>
             <div>
               <label htmlFor="reg-website" className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Site (opcional)
