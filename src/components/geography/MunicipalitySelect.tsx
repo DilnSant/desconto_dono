@@ -126,7 +126,8 @@ export default function MunicipalitySelect({
             setError('')
             setLoading(false)
             setIsOpen(false)
-            if (value) onChange(null)
+            // Only reset if clicking outside/blur, not on typed input
+            // User should be able to select from dropdown or type to search
           }}
           onFocus={() => {
             if (municipalities.length > 0) setIsOpen(true)
