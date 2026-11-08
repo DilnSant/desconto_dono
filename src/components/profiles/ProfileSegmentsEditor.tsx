@@ -91,7 +91,7 @@ export default function ProfileSegmentsEditor({
                     updateSegment(index, () => ({ ...segment, categoryId, subcategoryIds: [] }))
                   }}
                   disabled={loading || Boolean(catalogError)}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 pr-8 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
+                  className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-3 pr-8 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
                 >
                   <option value="">Selecione uma categoria</option>
                   {categories.map((category) => (

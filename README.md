@@ -25,7 +25,7 @@ O cadastro e o login estão disponíveis na página inicial. A lista de espera f
 
 Requer Node.js 20 ou superior. Instale dependências com `npm ci`, copie `.env.local.example` para `.env.local` e informe as credenciais do projeto Supabase. Configure as chaves Asaas de sandbox no servidor para testar assinaturas; nunca use prefixo `NEXT_PUBLIC_` nas chaves privadas.
 
-Em um banco novo, execute `supabase/schema.sql` e depois `supabase/schema_v4.sql`, nessa ordem, no SQL Editor do Supabase. Para atualizar um banco legado, revise e aplique somente `supabase/schema_v4.sql`. A migration é aditiva e deve ser testada antes de aplicação; este repositório não executa alterações de banco automaticamente.
+Em um banco novo, execute `supabase/schema.sql` e depois `supabase/schema_v4.sql`, nessa ordem, no SQL Editor do Supabase. Para atualizar um banco legado, revise e aplique `supabase/schema_v4.sql`; aplique também `supabase/schema_v5.sql` para adicionar as subcategorias de prestação de serviços. A v5 é idempotente e preserva seleções atuais.
 
 ```bash
 npm run dev
@@ -42,6 +42,8 @@ npm run dev
 As chaves Asaas reais começam com `$`; no `.env.local`, escape esse caractere inicial como `\$`. No painel da Vercel, informe o valor sem escape.
 
 Configure no Asaas o webhook `/api/asaas/webhook` com o token compartilhado e os eventos de checkout, pagamento e assinatura. Sandbox e produção têm configurações e credenciais independentes. Valide checkout pago, renovação, atraso e cancelamento em sandbox antes de ativar produção. A integração de e-mail do Supabase Auth é configurada no painel Supabase e não usa o remetente Resend da aplicação.
+
+Para confirmação de e-mail, configure no Supabase Auth o Site URL `https://www.descontododono.com.br` e permita o callback `https://www.descontododono.com.br/auth/callback` (e `http://localhost:3000/auth/callback` para desenvolvimento). O template de confirmação deve usar `{{ .ConfirmationURL }}` ou construir o link com `{{ .RedirectTo }}`. O cadastro e o reenvio de confirmação usam o callback da origem atual.
 
 ## Verificações locais
 

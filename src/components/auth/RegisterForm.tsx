@@ -12,6 +12,7 @@ import { ESTADOS_BR } from '@/lib/constants/categories'
 import ProfileSegmentsEditor from '@/components/profiles/ProfileSegmentsEditor'
 import { getSubcategoryCategoryLookup } from '@/lib/categories/catalog'
 import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
+import { getAuthCallbackUrl } from '@/lib/auth/redirects'
 import type { Municipality } from '@/lib/geography/municipalities'
 import { validateCoverageSelection, validateProfileSegments, type ProfileSegmentSelection } from '@/lib/profiles/coverage'
 import type { PlanType } from '@/lib/plans/entitlements'
@@ -38,6 +39,7 @@ export default function RegisterForm() {
   const [segments, setSegments] = useState<ProfileSegmentSelection>({ segments: [] })
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [accountCreated, setAccountCreated] = useState(false)
+  const [emailConfirmationPending, setEmailConfirmationPending] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
   const registrationPlan: PlanType = 'Gratuito'
@@ -92,6 +94,7 @@ export default function RegisterForm() {
         email: form.email,
         password: form.password,
         options: {
+          emailRedirectTo: getAuthCallbackUrl(window.location.origin),
           data: {
             full_name: form.full_name,
             city: municipality.name,
@@ -107,6 +110,7 @@ export default function RegisterForm() {
       }
 
       if (!data.session) {
+        setEmailConfirmationPending(true)
         setAccountCreated(true)
         return
       }
@@ -207,10 +211,11 @@ export default function RegisterForm() {
       )}
       {accountCreated && (
         <div role="status" className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          Conta criada. Acesse sua conta para concluir o cadastro no perfil.
-          <Link href="/perfil" className="ml-1 font-semibold underline">Abrir perfil</Link>
-          {' ou '}
-          <Link href="/login" className="font-semibold underline">entrar</Link>.
+          {emailConfirmationPending ? (
+            <>Conta criada. Confirme o link enviado para {form.email} (verifique também o spam) e depois <Link href="/login" className="font-semibold underline">entre na sua conta</Link>.</>
+          ) : (
+            <>Conta criada. Acesse sua conta para concluir o cadastro no perfil. <Link href="/perfil" className="font-semibold underline">Abrir perfil</Link> ou <Link href="/login" className="font-semibold underline">entrar</Link>.</>
+          )}
         </div>
       )}
 

@@ -4,7 +4,7 @@ import test from 'node:test'
 
 const origin = process.env.LOGO_TEST_ORIGIN ?? 'http://127.0.0.1:3000'
 const logoPath = '/images/LogoTransp..png'
-const iconPath = '/icon.jpg'
+const iconPath = '/icon.png'
 const logoRoutes = ['/login', '/cadastro', '/recuperar-senha', '/atualizar-senha']
 
 test('authentication pages use the transparent logo and the global icon uses its favicon asset', async () => {
@@ -18,10 +18,10 @@ test('authentication pages use the transparent logo and the global icon uses its
   assert.doesNotMatch(loginHtml, /href="\/favicon\.ico/)
   const iconResponse = await fetch(new URL(iconPath, origin))
   assert.equal(iconResponse.status, 200)
-  assert.match(iconResponse.headers.get('content-type') ?? '', /image\/jpeg/)
+  assert.match(iconResponse.headers.get('content-type') ?? '', /image\/png/)
   assert.deepEqual(
     Buffer.from(await iconResponse.arrayBuffer()),
-    await readFile(new URL('../src/app/icon.jpg', import.meta.url)),
+    await readFile(new URL('../public/images/favicon.nova.png', import.meta.url)),
     'the served icon must be the configured brand image'
   )
 

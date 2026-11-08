@@ -15,7 +15,10 @@ Revisado em 08/11/2026. Base da revisão: HEAD `1f5ac6e` (`fix: valida selecao d
 
 - [x] A URL Supabase do `.env.local` coincide com o bundle público atual, e os claims das chaves anon e service role correspondem ao projeto da URL. Local e deploy usam o mesmo projeto Supabase.
 - [x] Corrigir a resolução de schema no projeto correto. `reset_and_rebuild.sql` executado com sucesso em 07/11/2026 — schema base + v4 recriado, perfis restaurados de `auth.users`. Erros `42703 is_active`, `22P02 plan_type_enum` e `42703 is_premium` resolvidos definitivamente.
-- [ ] Revisar RLS e grants no SQL Editor. Em banco novo, aplicar `schema.sql` antes de `schema_v4.sql`; em banco legado, aplicar somente a migration v4 revisada. A v4 local inclui gestão de planos/assinaturas e preservação da carência em cancelamentos. Nenhuma migration foi executada nesta revisão.
+- [ ] Revisar RLS e grants no SQL Editor. Em banco novo, aplicar `schema.sql` antes de `schema_v4.sql`; em banco legado, aplicar somente a migration v4 revisada. A v4 local inclui gestão de planos/assinaturas e preservação da carência em cancelamentos. A v4 não foi aplicada nesta revisão.
+- [x] Adicionadas subcategorias profissionais à categoria “Prestação de Serviços” no seed e na migration idempotente `schema_v5.sql`. As 17 novas opções foram inseridas no Supabase remoto e a leitura com chave pública confirmou 19 opções disponíveis.
+- [x] O Supabase Auth está com confirmação por e-mail ativa (`mailer_autoconfirm=false`) e aceitou o callback de produção `/auth/callback` no preflight de verificação (HTTP 303 usando token inválido de diagnóstico). O cadastro e o reenvio usam esse mesmo endereço.
+- [ ] Conferir no painel Supabase se o template de confirmação personalizado usa `{{ .ConfirmationURL }}` ou `{{ .RedirectTo }}`. O conteúdo do template hospedado não está disponível pela API pública.
 - [x] Corrigidos os marcadores de conflito de `schema_v4.sql` e reconciliadas as colunas de localização dos benefícios, seleções múltiplas de perfil e backfill de categorias com a waitlist encerrada. A migration passou em PostgreSQL 16 descartável e foi reaplicada para conferir idempotência; dados sintéticos com categoria/subcategoria legadas foram preservados e migrados. Isso não confirma nem altera o banco remoto.
 - [ ] Implantar as alterações locais em Preview e validar cadastro, login, recuperação, perfil público/privado, anúncios, benefícios, checkout Sandbox e `/assinatura`. O bundle público foi consultado para comparar a URL Supabase, mas não foram feitos testes de escrita ou de conta real.
 - [ ] Depois de corrigir o schema, validar perfil e publicação de anúncios autenticados e revisar logs do deploy. O redirecionamento indevido de `/perfil/{id}` foi corrigido localmente e a regressão HTTP passou em 07/11; o erro `PGRST205` registrado naquele teste ainda precisa ser revalidado após a implantação.
@@ -33,7 +36,10 @@ Revisado em 08/11/2026. Base da revisão: HEAD `1f5ac6e` (`fix: valida selecao d
 - [x] Atualizadas as URLs base da API Asaas para `https://api-sandbox.asaas.com/v3` e `https://api.asaas.com/v3`, e o link hospedado de checkout para o formato oficial.
 - [x] Adicionada gestão da assinatura em `/assinatura` e cancelamento autenticado em `POST /api/asaas/cancel`. O Asaas é definido como `INACTIVE`, mantendo cobranças já emitidas; o acesso respeita período pago ou carência. O evento `SUBSCRIPTION_DELETED` não tenta buscar um recurso removido.
 - [x] Eliminada a dependência de rede do IBGE durante cadastro: a API local consulta um catálogo versionado com os 5.571 municípios oficiais e 27 UFs. O script `node scripts/update-municipality-catalog.mjs` atualiza o arquivo usando a API oficial e valida integridade antes de gravar.
-- [x] Corrigido o favicon: removidos o `favicon.ico` antigo e o ícone gerado com a letra “D”; o arquivo de convenção `src/app/icon.jpg` agora usa a imagem da marca em `public/images/favicon.jpg`.
+- [x] Corrigido o favicon: removido o ícone gerado com a letra “D”; o arquivo de convenção `src/app/icon.png` usa exatamente `public/images/favicon.nova.png`.
+- [x] Substituído o favicon pela imagem `public/images/favicon.nova.png` fornecida pelo usuário.
+- [x] O cadastro envia a confirmação para `/auth/callback`, informa que o usuário deve confirmar o e-mail, e o login oferece reenvio do link para contas pendentes.
+- [x] Corrigida a seta duplicada do seletor de segmento e ampliadas as subcategorias concretas de Prestação de Serviços.
 - [x] Todas as imagens `next/image` que usavam `fill` agora informam dimensões intrínsecas, mantendo a proporção visual e os tamanhos responsivos.
 - [x] Corrigido o layout da mensagem de erro da busca de municípios para telas estreitas.
 - [x] Checklist revisado com os resultados desta verificação; segredos não foram copiados nem registrados.
@@ -43,10 +49,11 @@ Revisado em 08/11/2026. Base da revisão: HEAD `1f5ac6e` (`fix: valida selecao d
 - `npm run lint`: passou, 0 erros e 0 avisos; dependências omitidas no efeito de `MunicipalitySelect` estão documentadas como intencionais.
 - `npx tsc --noEmit`: passou, 0 erros de tipagem.
 - `npm run build -- --webpack`: build de produção passou. O build padrão Turbopack falhou no sandbox ao criar subprocesso/vincular uma porta (`Operation not permitted`); o build Webpack documentado pelo Next 16 concluiu sem erro.
-- Suíte `tests/*.test.mjs`: **114/114 passaram**, incluindo páginas HTTP no servidor de produção local. Os testes que exigem loopback foram executados com permissão de rede local.
+- Suíte `tests/*.test.mjs`: **121/121 passaram**, incluindo páginas HTTP e favicon no servidor de produção local.
 - Corrigido o caso de busca de municípios sem termo e sem UF, que estava carregando desnecessariamente o catálogo; testes de municípios passaram.
 - Contrato de favicon atualizado para validar o recurso de ícone servido pela convenção do Next e comparar seus bytes com a imagem oficial da marca.
-- Busca de municípios testada sem rede e com o catálogo oficial completo (5.571 registros / 27 UFs). API local respondeu HTTP 200 para SC no build de produção; a página `/cadastro` serviu 5 imagens, todas com largura e altura, e `/icon.jpg` serviu o JPEG oficial da marca sem link ao favicon Next antigo.
+- Busca de municípios testada sem rede e com o catálogo oficial completo (5.571 registros / 27 UFs). API local respondeu HTTP 200 para SC no build de produção; a página `/cadastro` serviu 5 imagens, todas com largura e altura, e o contrato do favicon foi atualizado para `/icon.png` com o PNG oficial fornecido.
+- Cadastro, callback de autenticação, reenvio do e-mail, seta única, 17 subcategorias profissionais e bytes do novo `favicon.nova.png` cobertos por testes; a consulta pública do Supabase confirmou 19 subcategorias no segmento e o preflight do Auth aceitou a URL final de callback.
 - `.env.local`: presença verificada para variáveis Supabase, Asaas e Resend sem exibir nem copiar valores. Isso não valida credenciais, webhooks nem configurações de produção.
 - Git antes desta revisão: `main` sincronizada com `origin/main`, sem commits à frente nem alterações locais.
 - Nenhuma migração remota, alteração de conta/dados, cobrança ou ativação de produção foi executada nesta revisão.

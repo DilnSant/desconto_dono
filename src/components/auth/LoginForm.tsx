@@ -7,6 +7,7 @@ import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { ADMIN_LOGIN_EMAIL, getAdminLoginErrorMessage } from '@/lib/auth/admin-login-message'
+import { getAuthCallbackUrl } from '@/lib/auth/redirects'
 
 interface LoginFormProps {
   initialError?: string
@@ -18,11 +19,16 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(initialError)
+  const [emailNotConfirmed, setEmailNotConfirmed] = useState(false)
+  const [confirmationMessage, setConfirmationMessage] = useState('')
+  const [resendingConfirmation, setResendingConfirmation] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setEmailNotConfirmed(false)
+    setConfirmationMessage('')
     setLoading(true)
 
     const cleanEmail = email.trim().toLowerCase()
@@ -51,6 +57,7 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
               : 'E-mail ou senha inválidos. Verifique os dados digitados.'
         } else if (msgLower.includes('email not confirmed')) {
           friendlyMessage = 'Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada e spam para ativar sua conta antes de fazer login.'
+          setEmailNotConfirmed(true)
         } else if (msgLower.includes('user not found')) {
           friendlyMessage = 'Usuário não cadastrado. Verifique o e-mail informado ou crie sua conta grátis.'
         } else if (msgLower.includes('rate limit')) {
@@ -76,11 +83,36 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
     }
   }
 
+  const handleResendConfirmation = async () => {
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail) {
+      setError('Informe seu e-mail para receber um novo link de confirmação.')
+      return
+    }
+
+    setError('')
+    setConfirmationMessage('')
+    setResendingConfirmation(true)
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: cleanEmail,
+        options: { emailRedirectTo: getAuthCallbackUrl(window.location.origin) },
+      })
+      if (resendError) throw resendError
+      setConfirmationMessage('Se o cadastro estiver pendente, enviaremos um novo link de confirmação para este e-mail.')
+    } catch (resendError) {
+      setError(resendError instanceof Error ? resendError.message : 'Não foi possível reenviar o link. Tente novamente.')
+    } finally {
+      setResendingConfirmation(false)
+    }
+  }
+
   const handleGoogleLogin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: getAuthCallbackUrl(window.location.origin),
       },
     })
     if (error) {
@@ -135,9 +167,21 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
             <div className="flex-1 text-left">
               <p className="font-semibold text-red-800 text-xs mb-0.5">Não foi possível entrar</p>
               <p className="text-xs text-red-700 leading-relaxed">{error}</p>
+              {emailNotConfirmed && (
+                <button
+                  type="button"
+                  onClick={() => void handleResendConfirmation()}
+                  disabled={resendingConfirmation}
+                  className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-green-800 underline disabled:opacity-60"
+                >
+                  {resendingConfirmation && <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />}
+                  Reenviar link de confirmação
+                </button>
+              )}
             </div>
           </div>
         )}
+        {confirmationMessage && <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-800">{confirmationMessage}</p>}
 
         <div>
           <label htmlFor="login-email" className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -147,7 +191,11 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
             id="login-email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              setEmailNotConfirmed(false)
+              setConfirmationMessage('')
+            }}
             placeholder="seu@email.com"
             required
             className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
