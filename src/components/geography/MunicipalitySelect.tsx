@@ -62,13 +62,10 @@ export default function MunicipalitySelect({
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
-    // If a full municipality is selected, don't fetch
-    if (value?.ibgeCode && value?.name) return
+    // If a full municipality is selected and user is not typing a new query, don't fetch
+    if (value?.ibgeCode && value?.name && !query) return
 
-    // If we have a state but no query, we can fetch all cities for that state
-    // If we have a query, we fetch matching cities (optionally filtered by state)
     const stateCode = value?.stateCode
-    if (!stateCode && query.trim().length < 2) return
 
     const controller = new AbortController()
     const timeout = window.setTimeout(async () => {
@@ -88,7 +85,6 @@ export default function MunicipalitySelect({
 
         setMunicipalities(payload.municipalities)
         setError('')
-        // Only open if we have results and either user typed or state was selected
         if (payload.municipalities.length > 0) {
            setIsOpen(true)
         }
@@ -101,13 +97,13 @@ export default function MunicipalitySelect({
       } finally {
         if (!controller.signal.aborted) setLoading(false)
       }
-    }, 250)
+    }, 200)
 
     return () => {
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [query, retryCount, value?.stateCode, value?.ibgeCode, value?.name])
+  }, [query, retryCount, value?.stateCode])
 
   const inputValue = (value?.name && value?.stateCode) ? formatMunicipality(value) : query
   const legacyCity = legacyLocation?.city.trim()
@@ -147,9 +143,12 @@ export default function MunicipalitySelect({
             }
           }}
           onFocus={() => {
-            // When focusing, if we have results but it's closed, open it
-            if (municipalities.length > 0) setIsOpen(true)
-            // If we have a state but no city and no results yet, the useEffect will trigger fetch
+            // Always fetch or open dropdown when focusing if state is selected
+            if (value?.stateCode && municipalities.length === 0) {
+              setQuery('')
+            } else if (municipalities.length > 0) {
+              setIsOpen(true)
+            }
           }}
           placeholder={value?.stateCode ? "Selecione a cidade..." : "Selecione o estado primeiro"}
           className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-10 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
