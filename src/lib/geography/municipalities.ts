@@ -97,19 +97,27 @@ function normalizeSearchText(value: string): string {
     .toLocaleLowerCase('pt-BR')
 }
 
-export async function searchMunicipalities(query: string): Promise<Municipality[]> {
+export async function searchMunicipalities(query: string, stateCode?: string): Promise<Municipality[]> {
   const normalizedQuery = normalizeSearchText(query.trim())
-  if (!normalizedQuery) return []
+  const normalizedState = stateCode?.trim().toUpperCase()
 
   const municipalities = await loadMunicipalityCatalog()
+
   return municipalities
-    .filter((municipality) =>
-      [
+    .filter((municipality) => {
+      const matchesState = !normalizedState || municipality.stateCode === normalizedState
+
+      // If query is empty but state is provided, return all municipalities for that state
+      if (!normalizedQuery) return matchesState
+
+      const matchesQuery = [
         normalizeSearchText(municipality.name),
         municipality.stateCode.toLocaleLowerCase('pt-BR'),
         municipality.ibgeCode,
-      ].some((field) => field.includes(normalizedQuery)),
-    )
+      ].some((field) => field.includes(normalizedQuery))
+
+      return matchesState && matchesQuery
+    })
     .slice(0, MUNICIPALITY_RESULT_LIMIT)
 }
 
@@ -118,13 +126,16 @@ function isValidQuery(query: string): boolean {
 }
 
 export async function handleMunicipalitySearchGet(request: Request): Promise<Response> {
-  const query = new URL(request.url).searchParams.get('q')?.trim() ?? ''
+  const url = new URL(request.url)
+  const query = url.searchParams.get('q')?.trim() ?? ''
+  const stateCode = url.searchParams.get('state')?.trim() ?? ''
+
   if (!isValidQuery(query)) {
     return Response.json({ error: 'A busca deve ter até 100 caracteres.' }, { status: 400 })
   }
 
   try {
-    const municipalities = await searchMunicipalities(query)
+    const municipalities = await searchMunicipalities(query, stateCode)
     return Response.json(
       { municipalities },
       { headers: { 'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600' } },

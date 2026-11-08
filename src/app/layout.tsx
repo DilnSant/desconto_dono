@@ -30,7 +30,9 @@ export const metadata: Metadata = {
   authors: [{ name: 'Desconto do Dono' }],
   creator: 'Desconto do Dono',
   icons: {
-    icon: '/images/LogoTransp..png',
+    icon: '/images/favicon.jpg',
+    shortcut: '/images/favicon.jpg',
+    apple: '/images/favicon.jpg',
   },
   openGraph: {
     type: 'website',

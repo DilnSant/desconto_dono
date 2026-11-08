@@ -62,13 +62,23 @@ export default function MunicipalitySelect({
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
-    if (value || query.trim().length < 2) return
+    // If a full municipality is selected, don't fetch
+    if (value?.ibgeCode && value?.name) return
+
+    // If we have a state but no query, we can fetch all cities for that state
+    // If we have a query, we fetch matching cities (optionally filtered by state)
+    const stateCode = value?.stateCode
+    if (!stateCode && query.trim().length < 2) return
 
     const controller = new AbortController()
     const timeout = window.setTimeout(async () => {
       setLoading(true)
       try {
-        const response = await fetch(`/api/municipios?q=${encodeURIComponent(query.trim())}`, {
+        const url = new URL('/api/municipios', window.location.origin)
+        if (query.trim()) url.searchParams.set('q', query.trim())
+        if (stateCode) url.searchParams.set('state', stateCode)
+
+        const response = await fetch(url.toString(), {
           signal: controller.signal,
         })
         const payload: unknown = await response.json()
@@ -78,7 +88,10 @@ export default function MunicipalitySelect({
 
         setMunicipalities(payload.municipalities)
         setError('')
-        setIsOpen(true)
+        // Only open if we have results and either user typed or state was selected
+        if (payload.municipalities.length > 0) {
+           setIsOpen(true)
+        }
       } catch {
         if (!controller.signal.aborted) {
           setMunicipalities([])
@@ -94,9 +107,9 @@ export default function MunicipalitySelect({
       window.clearTimeout(timeout)
       controller.abort()
     }
-  }, [query, retryCount, value])
+  }, [query, retryCount, value?.stateCode, value?.ibgeCode, value?.name])
 
-  const inputValue = value ? formatMunicipality(value) : query
+  const inputValue = (value?.name && value?.stateCode) ? formatMunicipality(value) : query
   const legacyCity = legacyLocation?.city.trim()
   const legacyState = legacyLocation?.state.trim()
 
@@ -121,18 +134,24 @@ export default function MunicipalitySelect({
           required={required}
           value={inputValue}
           onChange={(event) => {
-            setQuery(event.target.value)
+            const newVal = event.target.value
+            setQuery(newVal)
             setMunicipalities([])
             setError('')
             setLoading(false)
             setIsOpen(false)
-            // Only reset if clicking outside/blur, not on typed input
-            // User should be able to select from dropdown or type to search
+
+            // If user clears the input, and we have a selected municipality, clear its city data but keep state if present
+            if (newVal === '' && value) {
+               onChange({ stateCode: value.stateCode, name: '', ibgeCode: '' })
+            }
           }}
           onFocus={() => {
+            // When focusing, if we have results but it's closed, open it
             if (municipalities.length > 0) setIsOpen(true)
+            // If we have a state but no city and no results yet, the useEffect will trigger fetch
           }}
-          placeholder="Digite o nome da cidade"
+          placeholder={value?.stateCode ? "Selecione a cidade..." : "Selecione o estado primeiro"}
           className="w-full rounded-xl border border-gray-200 py-3 pl-10 pr-10 text-sm outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-100"
         />
         {loading && (
