@@ -77,7 +77,7 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
   }
 
   const handleGoogleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`

@@ -100,6 +100,7 @@ function normalizeSearchText(value: string): string {
 export async function searchMunicipalities(query: string, stateCode?: string): Promise<Municipality[]> {
   const normalizedQuery = normalizeSearchText(query.trim())
   const normalizedState = stateCode?.trim().toUpperCase()
+  if (!normalizedQuery && !normalizedState) return []
 
   const municipalities = await loadMunicipalityCatalog()
 

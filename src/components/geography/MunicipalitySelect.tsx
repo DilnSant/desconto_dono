@@ -103,6 +103,8 @@ export default function MunicipalitySelect({
       window.clearTimeout(timeout)
       controller.abort()
     }
+    // Selection identity is deliberately excluded: text edits and state changes trigger lookups.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, retryCount, value?.stateCode])
 
   const inputValue = (value?.name && value?.stateCode) ? formatMunicipality(value) : query

@@ -1,14 +1,14 @@
 # Pendências para deixar o projeto pronto
 
-Revisado em 07/11/2026. HEAD `6e657de` (`fix(schema): torna schema.sql idempotente e adiciona script reset_and_rebuild`); branch `main` — sincronizado com `origin/main`.
+Revisado em 08/11/2026. Base da revisão: HEAD `935a514` (`fix: refine MunicipalitySelect effect and focus behavior for reliable city loading`); branch `main`, sincronizada com `origin/main` antes desta revisão.
 
-## Sandbox Asaas — chave reconhecida; acesso bloqueado pela lista de IPs
+## Sandbox Asaas — configuração manual pendente
 
 - [x] Confirmado que o prefixo local da chave é do **Sandbox** (`$aact_hmlg_`); não adicionar `/` ao valor. O `$` inicial foi escapado no `.env.local` para o Next.js carregar o valor literal corretamente. O arquivo é local e não versionado; nenhum segredo foi registrado neste checklist.
 - [x] Liberar o IP de saída deste ambiente de teste na lista de IPs permitidos para a chave Sandbox. ✅ IP `2.24.67.84` removido em 07/11/2026. Confirmado HTTP 200 na API Sandbox após remoção.
 - [x] `ASAAS_ENV=sandbox` e uma única `ASAAS_WEBHOOK_TOKEN` estão presentes localmente. O token correspondente no painel Sandbox ainda precisa ser confirmado.
 - [x] `SUPABASE_SERVICE_ROLE_KEY` está presente localmente, sem inspeção/divulgação do valor. Sua presença não confirma acesso ou schema no banco remoto.
-- [ ] No painel Asaas Sandbox, confirmar URL pública `/api/asaas/webhook`, token correspondente e eventos de checkout, pagamento e assinatura.
+- [ ] No painel Asaas Sandbox, confirmar URL pública `/api/asaas/webhook`, token correspondente e eventos de checkout, pagamento e assinatura. A configuração do painel não foi verificada nesta revisão.
 - [ ] Depois de substituir a chave e confirmar o webhook, testar checkout/pagamento, renovação, atraso, cancelamento e reativação, conferindo plano e limites após cada evento.
 
 ## Supabase e implantação
@@ -18,11 +18,12 @@ Revisado em 07/11/2026. HEAD `6e657de` (`fix(schema): torna schema.sql idempoten
 - [ ] Revisar RLS e grants no SQL Editor. Em banco novo, aplicar `schema.sql` antes de `schema_v4.sql`; em banco legado, aplicar somente a migration v4 revisada. A v4 local inclui gestão de planos/assinaturas e preservação da carência em cancelamentos. Nenhuma migration foi executada nesta revisão.
 - [x] Corrigidos os marcadores de conflito de `schema_v4.sql` e reconciliadas as colunas de localização dos benefícios, seleções múltiplas de perfil e backfill de categorias com a waitlist encerrada. A migration passou em PostgreSQL 16 descartável e foi reaplicada para conferir idempotência; dados sintéticos com categoria/subcategoria legadas foram preservados e migrados. Isso não confirma nem altera o banco remoto.
 - [ ] Implantar as alterações locais em Preview e validar cadastro, login, recuperação, perfil público/privado, anúncios, benefícios, checkout Sandbox e `/assinatura`. O bundle público foi consultado para comparar a URL Supabase, mas não foram feitos testes de escrita ou de conta real.
-- [ ] Depois de corrigir o schema, validar perfil e publicação de anúncios autenticados e revisar logs do deploy. O redirecionamento indevido de `/perfil/{id}` já foi corrigido localmente e a regressão HTTP passou; o `PGRST205` continua impedindo confirmar o fluxo completo.
+- [ ] Depois de corrigir o schema, validar perfil e publicação de anúncios autenticados e revisar logs do deploy. O redirecionamento indevido de `/perfil/{id}` foi corrigido localmente e a regressão HTTP passou em 07/11; o erro `PGRST205` registrado naquele teste ainda precisa ser revalidado após a implantação.
 
 ## E-mail e produção
 
-- [ ] `RESEND_API_KEY` e `RESEND_FROM_EMAIL` estão presentes localmente. Confirmar os ambientes necessários na Vercel e validar entrega de lead; a presença local não confirma credenciais válidas nem configuração Vercel.
+- [x] Presença local de `RESEND_API_KEY` e `RESEND_FROM_EMAIL` confirmada em 08/11 sem ler seus valores.
+- [ ] Confirmar as variáveis nos ambientes da Vercel e validar entrega de lead; presença local não confirma credenciais válidas nem configuração Vercel.
 - [ ] Conferir SMTP de recuperação de senha em Supabase Auth separadamente do Resend da aplicação.
 - [ ] Após aprovação dos testes Sandbox, configurar credenciais e webhook de produção separados e obter autorização explícita antes de qualquer cobrança real.
 
@@ -31,9 +32,23 @@ Revisado em 07/11/2026. HEAD `6e657de` (`fix(schema): torna schema.sql idempoten
 - [x] Corrigida a proteção de rotas para manter `/perfil` privado e `/perfil/{id}` público.
 - [x] Atualizadas as URLs base da API Asaas para `https://api-sandbox.asaas.com/v3` e `https://api.asaas.com/v3`, e o link hospedado de checkout para o formato oficial.
 - [x] Adicionada gestão da assinatura em `/assinatura` e cancelamento autenticado em `POST /api/asaas/cancel`. O Asaas é definido como `INACTIVE`, mantendo cobranças já emitidas; o acesso respeita período pago ou carência. O evento `SUBSCRIPTION_DELETED` não tenta buscar um recurso removido.
+- [x] Ajustada a busca de municípios: consulta vazia sem UF retorna lista vazia sem carregar o catálogo do IBGE; seleção por UF segue consultando os municípios oficiais.
+- [x] Atualizados contratos de teste para refletir decisões já implementadas: OAuth retorna à origem ativa do app e o ícone global usa `/images/favicon.jpg`, enquanto as páginas de autenticação mantêm o logo transparente.
 - [x] Checklist revisado com os resultados desta verificação; segredos não foram copiados nem registrados.
 
-## Validação local (07/11/2026)
+## Validação local (08/11/2026)
+
+- `npm run lint`: passou, 0 erros e 0 avisos; dependências omitidas no efeito de `MunicipalitySelect` estão documentadas como intencionais.
+- `npx tsc --noEmit`: passou, 0 erros de tipagem.
+- `npm run build -- --webpack`: build de produção passou. O build padrão Turbopack falhou no sandbox ao criar subprocesso/vincular uma porta (`Operation not permitted`); o build Webpack documentado pelo Next 16 concluiu sem erro.
+- Suíte `tests/*.test.mjs`: **113/113 passaram**, incluindo páginas HTTP no servidor de produção local. Os testes que exigem loopback foram executados com permissão de rede local.
+- Corrigido o caso de busca de municípios sem termo e sem UF, que estava carregando desnecessariamente o catálogo; testes de municípios passaram.
+- Contratos de OAuth e favicon atualizados para corresponder às decisões já presentes no código e nos commits de 07–08/11.
+- `.env.local`: presença verificada para variáveis Supabase, Asaas e Resend sem exibir nem copiar valores. Isso não valida credenciais, webhooks nem configurações de produção.
+- Git antes desta revisão: `main` sincronizada com `origin/main`, sem commits à frente nem alterações locais.
+- Nenhuma migração remota, alteração de conta/dados, cobrança ou ativação de produção foi executada nesta revisão.
+
+## Validação local histórica (07/11/2026)
 
 - `npm run lint`: passou (0 erros, 0 avisos).
 - `npx tsc --noEmit`: passou (0 erros de tipagem).
