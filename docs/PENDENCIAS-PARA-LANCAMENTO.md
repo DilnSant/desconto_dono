@@ -1,6 +1,6 @@
 # Pendências para deixar o projeto pronto
 
-Revisado em 08/11/2026. Base da revisão: HEAD `935a514` (`fix: refine MunicipalitySelect effect and focus behavior for reliable city loading`); branch `main`, sincronizada com `origin/main` antes desta revisão.
+Revisado em 08/11/2026. Base da revisão: HEAD `1f5ac6e` (`fix: valida selecao de municipios e atualiza checklist`); branch `main` antes das correções descritas abaixo.
 
 ## Sandbox Asaas — configuração manual pendente
 
@@ -32,8 +32,10 @@ Revisado em 08/11/2026. Base da revisão: HEAD `935a514` (`fix: refine Municipal
 - [x] Corrigida a proteção de rotas para manter `/perfil` privado e `/perfil/{id}` público.
 - [x] Atualizadas as URLs base da API Asaas para `https://api-sandbox.asaas.com/v3` e `https://api.asaas.com/v3`, e o link hospedado de checkout para o formato oficial.
 - [x] Adicionada gestão da assinatura em `/assinatura` e cancelamento autenticado em `POST /api/asaas/cancel`. O Asaas é definido como `INACTIVE`, mantendo cobranças já emitidas; o acesso respeita período pago ou carência. O evento `SUBSCRIPTION_DELETED` não tenta buscar um recurso removido.
-- [x] Ajustada a busca de municípios: consulta vazia sem UF retorna lista vazia sem carregar o catálogo do IBGE; seleção por UF segue consultando os municípios oficiais.
-- [x] Atualizados contratos de teste para refletir decisões já implementadas: OAuth retorna à origem ativa do app e o ícone global usa `/images/favicon.jpg`, enquanto as páginas de autenticação mantêm o logo transparente.
+- [x] Eliminada a dependência de rede do IBGE durante cadastro: a API local consulta um catálogo versionado com os 5.571 municípios oficiais e 27 UFs. O script `node scripts/update-municipality-catalog.mjs` atualiza o arquivo usando a API oficial e valida integridade antes de gravar.
+- [x] Corrigido o favicon: removidos o `favicon.ico` antigo e o ícone gerado com a letra “D”; o arquivo de convenção `src/app/icon.jpg` agora usa a imagem da marca em `public/images/favicon.jpg`.
+- [x] Todas as imagens `next/image` que usavam `fill` agora informam dimensões intrínsecas, mantendo a proporção visual e os tamanhos responsivos.
+- [x] Corrigido o layout da mensagem de erro da busca de municípios para telas estreitas.
 - [x] Checklist revisado com os resultados desta verificação; segredos não foram copiados nem registrados.
 
 ## Validação local (08/11/2026)
@@ -41,9 +43,10 @@ Revisado em 08/11/2026. Base da revisão: HEAD `935a514` (`fix: refine Municipal
 - `npm run lint`: passou, 0 erros e 0 avisos; dependências omitidas no efeito de `MunicipalitySelect` estão documentadas como intencionais.
 - `npx tsc --noEmit`: passou, 0 erros de tipagem.
 - `npm run build -- --webpack`: build de produção passou. O build padrão Turbopack falhou no sandbox ao criar subprocesso/vincular uma porta (`Operation not permitted`); o build Webpack documentado pelo Next 16 concluiu sem erro.
-- Suíte `tests/*.test.mjs`: **113/113 passaram**, incluindo páginas HTTP no servidor de produção local. Os testes que exigem loopback foram executados com permissão de rede local.
+- Suíte `tests/*.test.mjs`: **114/114 passaram**, incluindo páginas HTTP no servidor de produção local. Os testes que exigem loopback foram executados com permissão de rede local.
 - Corrigido o caso de busca de municípios sem termo e sem UF, que estava carregando desnecessariamente o catálogo; testes de municípios passaram.
-- Contratos de OAuth e favicon atualizados para corresponder às decisões já presentes no código e nos commits de 07–08/11.
+- Contrato de favicon atualizado para validar o recurso de ícone servido pela convenção do Next e comparar seus bytes com a imagem oficial da marca.
+- Busca de municípios testada sem rede e com o catálogo oficial completo (5.571 registros / 27 UFs). API local respondeu HTTP 200 para SC no build de produção; a página `/cadastro` serviu 5 imagens, todas com largura e altura, e `/icon.jpg` serviu o JPEG oficial da marca sem link ao favicon Next antigo.
 - `.env.local`: presença verificada para variáveis Supabase, Asaas e Resend sem exibir nem copiar valores. Isso não valida credenciais, webhooks nem configurações de produção.
 - Git antes desta revisão: `main` sincronizada com `origin/main`, sem commits à frente nem alterações locais.
 - Nenhuma migração remota, alteração de conta/dados, cobrança ou ativação de produção foi executada nesta revisão.

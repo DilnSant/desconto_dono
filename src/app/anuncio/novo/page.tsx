@@ -231,7 +231,8 @@ export default function NovoAnuncioPage() {
 
           {imagePreview ? (
             <div className="relative aspect-[16/9] rounded-2xl overflow-hidden group">
-              <Image src={imagePreview} alt="Preview" fill className="object-cover" />
+              <Image src={imagePreview} alt="Preview" width={1600} height={900}
+                className="absolute inset-0 h-full w-full object-cover" />
               <button type="button" onClick={() => { setImagePreview(null); setImageFile(null) }}
                 className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors">
                 <X className="w-4 h-4" />

@@ -113,7 +113,8 @@ export default async function PublicProfilePage({ params }: Props) {
         {/* Capa */}
         <div className="relative h-48 md:h-64">
           {coverImage ? (
-            <Image src={coverImage} alt="Capa" fill unoptimized className="object-cover" />
+            <Image src={coverImage} alt="Capa" width={1600} height={600} unoptimized
+              className="absolute inset-0 h-full w-full object-cover" />
           ) : (
             <div className="w-full h-full" style={{ background: 'linear-gradient(135deg, #005C2D 0%, #009B3A 50%, #002776 100%)' }} />
           )}
@@ -302,9 +303,10 @@ export default async function PublicProfilePage({ params }: Props) {
                 <Image
                   src={image.url}
                   alt={`Foto ${index + 1} de ${typedProfile.business_name || typedProfile.full_name}`}
-                  fill
+                  width={1200}
+                  height={900}
                   unoptimized
-                  className="object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               </div>
             ))}

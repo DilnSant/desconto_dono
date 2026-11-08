@@ -34,8 +34,10 @@ export default function ListingCard({ listing }: ListingCardProps) {
           <Image
             src={listing.image_url}
             alt={listing.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            width={1200}
+            height={900}
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center"

@@ -29,11 +29,6 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Desconto do Dono' }],
   creator: 'Desconto do Dono',
-  icons: {
-    icon: '/images/favicon.jpg',
-    shortcut: '/images/favicon.jpg',
-    apple: '/images/favicon.jpg',
-  },
   openGraph: {
     type: 'website',
     locale: 'pt_BR',

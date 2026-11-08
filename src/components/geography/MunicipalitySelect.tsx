@@ -171,15 +171,15 @@ export default function MunicipalitySelect({
       )}
 
       {error && (
-        <div className="flex items-start justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-          <span className="flex items-start gap-2">
+        <div className="flex flex-col items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 sm:flex-row sm:justify-between">
+          <span className="flex min-w-0 items-start gap-2">
             <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
             {error}
           </span>
           <button
             type="button"
             onClick={() => setRetryCount((count) => count + 1)}
-            className="inline-flex shrink-0 items-center gap-1 font-semibold underline"
+            className="inline-flex shrink-0 items-center gap-1 font-semibold underline sm:ml-auto"
           >
             <RefreshCw aria-hidden="true" className="h-3.5 w-3.5" />
             Tentar novamente

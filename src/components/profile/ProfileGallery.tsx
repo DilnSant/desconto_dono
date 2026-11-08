@@ -244,10 +244,11 @@ export default function ProfileGallery() {
                   <Image
                     src={gallery.cover}
                     alt="Capa atual do perfil"
-                    fill
+                    width={1600}
+                    height={700}
                     unoptimized
                     sizes="(max-width: 640px) 100vw, 50vw"
-                    className="object-cover"
+                    className="absolute inset-0 h-full w-full object-cover"
                   />
                 )}
               </div>
@@ -344,10 +345,11 @@ export default function ProfileGallery() {
                         <Image
                           src={image.url}
                           alt={`Foto ${index + 1} da empresa`}
-                          fill
+                          width={1200}
+                          height={900}
                           unoptimized
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                          className="object-cover"
+                          className="absolute inset-0 h-full w-full object-cover"
                         />
                       )}
                     </div>

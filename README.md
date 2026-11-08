@@ -53,3 +53,7 @@ npm run build
 ```
 
 Alguns testes de páginas e autenticação fazem requisições HTTP e precisam da aplicação em execução (`npm run dev` ou `npm start`). Testes locais de Asaas não confirmam uma cobrança real; isso depende das credenciais e do webhook de sandbox.
+
+## Catálogo de municípios
+
+A busca usa um snapshot dos municípios oficiais do IBGE incluído no projeto, então o cadastro não depende da disponibilidade da API externa. Para atualizar o snapshot, execute `node scripts/update-municipality-catalog.mjs`; o script valida códigos, cobertura das 27 UFs e quantidade de registros antes de gravar o arquivo.

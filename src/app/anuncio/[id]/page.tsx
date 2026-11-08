@@ -108,7 +108,9 @@ export default async function AnuncioPage({ params }: Props) {
           {/* Imagem */}
           <div className="relative aspect-[16/9] rounded-3xl overflow-hidden bg-gray-100 shadow-sm">
             {listing.image_url ? (
-              <Image src={listing.image_url} alt={listing.title} fill className="object-cover" />
+              <Image src={listing.image_url} alt={listing.title} width={1600} height={900}
+                sizes="(max-width: 1024px) 100vw, 66vw"
+                className="absolute inset-0 h-full w-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, #f0f9f0, #e0f2e9)' }}>

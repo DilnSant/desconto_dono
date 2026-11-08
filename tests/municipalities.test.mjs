@@ -1,105 +1,73 @@
 import assert from 'node:assert/strict'
-import { existsSync, readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 const lookupPath = new URL('../src/lib/geography/municipalities.ts', import.meta.url)
 const routePath = new URL('../src/app/api/municipios/route.ts', import.meta.url)
 
-function ibgeResponse(municipalities) {
-  return new Response(JSON.stringify(municipalities), {
-    status: 200,
-    headers: { 'content-type': 'application/json' },
-  })
-}
-
-function municipality(id, name, stateCode = 'SP') {
-  return {
-    id,
-    nome: name,
-    microrregiao: {
-      mesorregiao: {
-        UF: { sigla: stateCode },
-      },
-    },
-  }
-}
-
-async function withFetch(fetchImplementation, callback) {
+test('returns official city results from the local catalog when IBGE is unreachable', async () => {
   const originalFetch = globalThis.fetch
-  globalThis.fetch = fetchImplementation
+  let fetchCount = 0
+  globalThis.fetch = async () => {
+    fetchCount += 1
+    throw new Error('IBGE is temporarily unavailable')
+  }
+
   try {
-    await callback()
+    const { searchMunicipalities } = await import(`${lookupPath.href}?local-catalog`)
+    assert.deepEqual(await searchMunicipalities('abdon', 'SC'), [
+      { ibgeCode: '4200051', name: 'Abdon Batista', stateCode: 'SC' },
+    ])
+    assert.equal(fetchCount, 0)
   } finally {
     globalThis.fetch = originalFetch
   }
-}
-
-test('searches municipalities without case or accent sensitivity and preserves IBGE identity', async () => {
-  await withFetch(async () => ibgeResponse([
-    municipality(3550308, 'São Paulo', 'SP'),
-    municipality(3304557, 'Rio de Janeiro', 'RJ'),
-  ]), async () => {
-    const { searchMunicipalities } = await import(`${lookupPath.href}?case-search`)
-
-    assert.deepEqual(await searchMunicipalities('SAO PAULO'), [
-      { ibgeCode: '3550308', name: 'São Paulo', stateCode: 'SP' },
-    ])
-  })
 })
 
-test('returns no results for an empty query without requesting the IBGE catalog', async () => {
-  let fetchCount = 0
-  await withFetch(async () => {
-    fetchCount += 1
-    return ibgeResponse([])
-  }, async () => {
-    const { searchMunicipalities } = await import(`${lookupPath.href}?empty-query`)
+test('searches with accent and case normalization and scopes to the selected state', async () => {
+  const { searchMunicipalities } = await import(`${lookupPath.href}?accent-search`)
 
-    assert.deepEqual(await searchMunicipalities('  '), [])
-    assert.equal(fetchCount, 0)
-  })
+  const matches = await searchMunicipalities('sao jose', 'SC')
+  assert.ok(matches.some((municipality) => municipality.ibgeCode === '4216602' && municipality.name === 'São José'))
+  assert.deepEqual(await searchMunicipalities('sao jose', 'AM'), [])
 })
 
-test('rejects malformed official municipality responses', async () => {
-  await withFetch(async () => ibgeResponse([{ id: 'not-an-ibge-code', nome: 'Cidade inválida' }]), async () => {
-    const { searchMunicipalities } = await import(`${lookupPath.href}?malformed`)
+test('returns up to 20 official municipalities for a selected state', async () => {
+  const { searchMunicipalities, MUNICIPALITY_RESULT_LIMIT } = await import(`${lookupPath.href}?state-results`)
 
-    await assert.rejects(searchMunicipalities('cidade'), /Resposta inválida do IBGE/)
-  })
+  const results = await searchMunicipalities('', 'SC')
+  assert.equal(results.length, MUNICIPALITY_RESULT_LIMIT)
+  assert.ok(results.every(({ stateCode, ibgeCode }) => stateCode === 'SC' && /^\d{7}$/.test(ibgeCode)))
 })
 
-test('returns a retryable service error when the IBGE catalog is unavailable', async () => {
-  await withFetch(async () => {
-    throw new Error('network unavailable')
-  }, async () => {
-    assert.ok(existsSync(routePath), 'Municipality route must exist')
-    assert.match(readFileSync(routePath, 'utf8'), /handleMunicipalitySearchGet as GET/)
-    const { handleMunicipalitySearchGet } = await import(`${lookupPath.href}?api-error`)
-    const response = await handleMunicipalitySearchGet(new Request('http://localhost/api/municipios?q=sao'))
+test('serves city choices through the API without a network dependency', async () => {
+  const route = await readFile(routePath, 'utf8')
+  assert.match(route, /handleMunicipalitySearchGet as GET/)
 
-    assert.equal(response.status, 503)
-    assert.match((await response.json()).error, /Tente novamente/)
-  })
+  const { handleMunicipalitySearchGet } = await import(`${lookupPath.href}?route`)
+  const response = await handleMunicipalitySearchGet(new Request('http://localhost/api/municipios?state=SC'))
+  const body = await response.json()
+
+  assert.equal(response.status, 200)
+  assert.equal(response.headers.get('cache-control'), 'public, max-age=300, stale-while-revalidate=3600')
+  assert.equal(body.municipalities[0].name, 'Abdon Batista')
+  assert.equal(body.municipalities[0].stateCode, 'SC')
 })
 
-test('bounds route results and returns complete municipality identities', async () => {
-  const catalog = Array.from({ length: 30 }, (_, index) =>
-    municipality(3500000 + index, `Cidade ${index}`, 'SP'),
-  )
+test('returns no results for empty search without a state and rejects oversized queries', async () => {
+  const { handleMunicipalitySearchGet } = await import(`${lookupPath.href}?validation`)
+  const empty = await handleMunicipalitySearchGet(new Request('http://localhost/api/municipios'))
+  const invalid = await handleMunicipalitySearchGet(new Request(`http://localhost/api/municipios?q=${'a'.repeat(101)}`))
 
-  await withFetch(async () => ibgeResponse(catalog), async () => {
-    assert.ok(existsSync(routePath), 'Municipality route must exist')
-    assert.match(readFileSync(routePath, 'utf8'), /handleMunicipalitySearchGet as GET/)
-    const { handleMunicipalitySearchGet } = await import(`${lookupPath.href}?api-success`)
-    const response = await handleMunicipalitySearchGet(new Request('http://localhost/api/municipios?q=cidade'))
-    const body = await response.json()
+  assert.deepEqual((await empty.json()).municipalities, [])
+  assert.equal(invalid.status, 400)
+})
 
-    assert.equal(response.status, 200)
-    assert.ok(body.municipalities.length <= 20)
-    assert.deepEqual(body.municipalities[0], {
-      ibgeCode: '3500000',
-      name: 'Cidade 0',
-      stateCode: 'SP',
-    })
-  })
+test('bundled catalog contains every Brazilian state and the complete IBGE dataset', async () => {
+  const catalog = JSON.parse(await readFile(new URL('../src/lib/geography/municipalities.json', import.meta.url)))
+  const stateCodes = new Set(catalog.map(({ stateCode }) => stateCode))
+
+  assert.equal(catalog.length, 5571)
+  assert.equal(stateCodes.size, 27)
+  assert.ok(catalog.every(({ ibgeCode, name }) => /^\d{7}$/.test(ibgeCode) && name))
 })
