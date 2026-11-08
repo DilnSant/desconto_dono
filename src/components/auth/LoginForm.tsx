@@ -77,10 +77,16 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
   }
 
   const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: 'https://www.descontododono.com.br/auth/callback' },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`
+      },
     })
+    if (error) {
+        console.error('Erro no login Google:', error)
+        setError('Erro ao iniciar login com Google.')
+    }
   }
 
   return (
