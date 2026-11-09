@@ -71,6 +71,13 @@ test('gallery route returns JSON when handler dependencies fail during initializ
   assert.match(galleryRoute, /AuthSessionMissingError/)
 })
 
+test('gallery checks the session before creating the administrative Supabase client', () => {
+  assert.match(galleryRoute, /let admin: ReturnType<typeof createSupabaseAdminClient> \| null = null/)
+  assert.match(galleryRoute, /admin \?\?= createSupabaseAdminClient\(\)/)
+  assert.ok(galleryRoute.indexOf('async authenticate()') < galleryRoute.indexOf('const admin = getAdmin()'))
+  assert.doesNotMatch(galleryRoute, /Promise\.resolve\(createSupabaseAdminClient\(\)\)/)
+})
+
 test('gallery client handles empty or non-JSON server errors without a JSON parse exception', () => {
   assert.match(galleryClient, /response\.text\(\)/)
   assert.match(galleryClient, /JSON\.parse\(responseText\)/)
