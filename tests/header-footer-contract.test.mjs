@@ -18,7 +18,9 @@ test('footer places the complete institutional text beside its logo', () => {
   const footer = source('../src/components/layout/Footer.tsx')
   const normalizedFooter = footer.replace(/\s+/g, ' ')
 
-  assert.ok(footer.includes('flex flex-row items-center gap-6'))
+  assert.ok(footer.includes('xl:flex-row xl:items-stretch'))
+  assert.ok(footer.includes('xl:h-full'))
+  assert.ok(footer.includes('xl:grid-cols-[1.65fr_1fr_1fr]'))
   assert.ok(
     normalizedFooter.includes(
       'Conectamos empreendedores de direita para fortalecer negócios locais e transformar boas parcerias em contratos confiáveis. Nossa plataforma aproxima quem produz, gera empregos e movimenta a economia brasileira'

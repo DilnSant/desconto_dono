@@ -33,8 +33,19 @@ interface ApiResponse {
 }
 
 async function readResponse(response: Response): Promise<ApiResponse> {
-  const body = await response.json() as ApiResponse
-  if (!response.ok) throw new Error(body.error || 'Não foi possível concluir a operação.')
+  const responseText = await response.text()
+  let body: ApiResponse = {}
+  if (responseText.trim()) {
+    try {
+      const parsed: unknown = JSON.parse(responseText)
+      if (typeof parsed === 'object' && parsed !== null) body = parsed as ApiResponse
+    } catch {
+      // Return the HTTP status below when a proxy or framework sends a non-JSON error page.
+    }
+  }
+  if (!response.ok) {
+    throw new Error(body.error || `Não foi possível concluir a operação (HTTP ${response.status}).`)
+  }
   return body
 }
 

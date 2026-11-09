@@ -20,6 +20,7 @@ async function createHandlers() {
     supabaseUrl,
     async authenticate() {
       const { data: { user }, error } = await server.auth.getUser()
+      if (error?.name === 'AuthSessionMissingError') return null
       if (error) throw error
       return user?.id ?? null
     },
@@ -169,18 +170,41 @@ async function createHandlers() {
   })
 }
 
+type GalleryHandlers = Awaited<ReturnType<typeof createHandlers>>
+
+async function runGalleryRoute(method: keyof GalleryHandlers, request?: Request): Promise<Response> {
+  try {
+    const handlers = await createHandlers()
+    if (method === 'GET') return await handlers.GET()
+    if (!request) {
+      return Response.json({ error: 'Dados inválidos.' }, { status: 400 })
+    }
+    return await handlers[method](request)
+  } catch (error) {
+    console.error('[PROFILE_GALLERY] Falha ao inicializar rota', {
+      method,
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      message: error instanceof Error ? error.message.slice(0, 240) : 'Falha desconhecida.',
+    })
+    return Response.json(
+      { error: 'Não foi possível concluir a solicitação. Tente novamente.' },
+      { status: 500, headers: { 'Cache-Control': 'private, no-store' } },
+    )
+  }
+}
+
 export async function GET() {
-  return (await createHandlers()).GET()
+  return runGalleryRoute('GET')
 }
 
 export async function POST(request: Request) {
-  return (await createHandlers()).POST(request)
+  return runGalleryRoute('POST', request)
 }
 
 export async function PATCH(request: Request) {
-  return (await createHandlers()).PATCH(request)
+  return runGalleryRoute('PATCH', request)
 }
 
 export async function DELETE(request: Request) {
-  return (await createHandlers()).DELETE(request)
+  return runGalleryRoute('DELETE', request)
 }

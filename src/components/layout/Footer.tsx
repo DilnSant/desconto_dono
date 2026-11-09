@@ -12,24 +12,24 @@ export default function Footer() {
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10 lg:gap-16">
+        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3 lg:gap-16 xl:grid-cols-[1.65fr_1fr_1fr]">
           {/* Coluna 1 — Sobre */}
           <div className="space-y-4">
-            <div className="flex flex-row items-center gap-6">
-            <Link href="/" className="inline-flex shrink-0 items-center gap-2.5 group">
-              <Image
-                src="/images/LogoTransp..png"
-                alt="Desconto do Dono"
-                width={1024}
-                height={572}
-                className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
-              />
-            </Link>
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch xl:gap-6">
+              <Link href="/" className="group inline-flex h-12 shrink-0 items-center gap-2.5 xl:flex xl:h-auto xl:self-stretch xl:items-stretch">
+                <Image
+                  src="/images/LogoTransp..png"
+                  alt="Desconto do Dono"
+                  width={1024}
+                  height={572}
+                  className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 xl:block xl:h-full xl:w-auto xl:max-w-none"
+                />
+              </Link>
 
-            <p className="text-gray-400 text-sm leading-relaxed">
-              Conectamos empreendedores de direita para fortalecer negócios locais e transformar boas parcerias em contratos confiáveis.
-              Nossa plataforma aproxima quem produz, gera empregos e movimenta a economia brasileira.
-            </p>
+              <p className="min-w-0 flex-1 text-sm leading-relaxed text-gray-400">
+                Conectamos empreendedores de direita para fortalecer negócios locais e transformar boas parcerias em contratos confiáveis.
+                Nossa plataforma aproxima quem produz, gera empregos e movimenta a economia brasileira.
+              </p>
             </div>
             <a href="mailto:faleconosco@descontododono.com.br" className="inline-flex text-sm text-yellow-300 underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-300">
               faleconosco@descontododono.com.br

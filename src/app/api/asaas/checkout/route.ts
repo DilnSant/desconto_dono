@@ -7,7 +7,9 @@ import {
   findAsaasCustomerByExternalRef,
   createAsaasCheckout,
   getAsaasCheckoutUrl,
+  AsaasApiError,
 } from '@/lib/asaas/client'
+import { getCheckoutCallbackUrls } from '@/lib/asaas/callback-urls'
 import type { AsaasCreateCheckoutResponse } from '@/lib/asaas/types'
 import { getPlanMonthlyPriceCents, type PlanType } from '@/lib/plans/entitlements'
 
@@ -39,11 +41,24 @@ export async function POST(request: Request) {
   }
 
   const plan = planType as PlanType
+  let callback: ReturnType<typeof getCheckoutCallbackUrls>
+  try {
+    callback = getCheckoutCallbackUrls(
+      request.url,
+      process.env.NEXT_PUBLIC_APP_URL,
+      process.env.VERCEL_URL,
+    )
+  } catch {
+    return NextResponse.json({ error: 'Checkout temporariamente indisponível. Configure a URL pública do aplicativo.' }, { status: 503 })
+  }
+
+  let stage = 'create-admin-client'
 
   try {
     const supabase = createSupabaseAdminClient()
 
     // 2. Buscar perfil do usuário no Supabase
+    stage = 'load-profile'
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('id, full_name, email, plan_type')
@@ -55,6 +70,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Verificar se já tem assinatura ativa
+    stage = 'check-existing-subscription'
     const { data: existingSub, error: existingSubError } = await supabase
       .from('subscriptions')
       .select('id, status, plan_type')
@@ -76,9 +92,11 @@ export async function POST(request: Request) {
 
     // 4. Obter ou criar Customer no Asaas
     const customerExternalRef = `profile:${profileId}`
+    stage = 'find-asaas-customer'
     let asaasCustomer = await findAsaasCustomerByExternalRef(customerExternalRef)
 
     if (!asaasCustomer) {
+      stage = 'create-asaas-customer'
       asaasCustomer = await createAsaasCustomer({
         name: profile.full_name ?? 'Cliente Desconto do Dono',
         email: profile.email ?? '',
@@ -89,6 +107,7 @@ export async function POST(request: Request) {
     // 5. Criar referência externa única para a assinatura
     const externalReference = `sub:${profileId}:${plan}:${Date.now()}`
     const planTypeForDb = plan as 'Essencial' | 'Profissional'
+    stage = 'reserve-subscription'
     const { data: pendingSubscription, error: insertError } = await supabase
       .from('subscriptions')
       .insert({
@@ -110,20 +129,17 @@ export async function POST(request: Request) {
     // 6. Criar checkout recorrente hospedado no Asaas
     const priceCents = getPlanMonthlyPriceCents(plan)
     let checkout: AsaasCreateCheckoutResponse
+    stage = 'create-asaas-checkout'
     try {
       checkout = await createAsaasCheckout({
-      customer: asaasCustomer.id,
-      billingTypes: ['CREDIT_CARD'],
-      chargeTypes: ['RECURRENT'],
-      minutesToExpire: 1440,
-      externalReference,
-      callback: {
-        successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/planos?retorno=sucesso`,
-        cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/planos?retorno=cancelado`,
-        expiredUrl: `${process.env.NEXT_PUBLIC_APP_URL}/planos?retorno=expirado`,
-      },
-      items: [{ name: `Plano ${plan} — Desconto do Dono`, quantity: 1, value: priceCents / 100 }],
-      subscription: { cycle: 'MONTHLY', nextDueDate: nextDueDate() },
+        customer: asaasCustomer.id,
+        billingTypes: ['CREDIT_CARD'],
+        chargeTypes: ['RECURRENT'],
+        minutesToExpire: 1440,
+        externalReference,
+        callback,
+        items: [{ name: `Plano ${plan} — Desconto do Dono`, quantity: 1, value: priceCents / 100 }],
+        subscription: { cycle: 'MONTHLY', nextDueDate: nextDueDate() },
       })
     } catch (checkoutError) {
       await supabase.from('subscriptions')
@@ -132,6 +148,7 @@ export async function POST(request: Request) {
       throw checkoutError
     }
 
+    stage = 'associate-asaas-checkout'
     const { error: checkoutLinkError } = await supabase
       .from('subscriptions')
       .update({ asaas_checkout_id: checkout.id })
@@ -144,7 +161,11 @@ export async function POST(request: Request) {
     // 8. Obter link de pagamento
     return NextResponse.json({ paymentLink: getAsaasCheckoutUrl(checkout.id) }, { status: 201 })
   } catch (err) {
-    console.error('[CHECKOUT] Erro inesperado:', err instanceof Error ? err.name : 'UnknownError')
+    if (err instanceof AsaasApiError) {
+      console.error('[CHECKOUT] Erro do provedor:', { stage, status: err.status, codes: err.codes })
+    } else {
+      console.error('[CHECKOUT] Erro inesperado:', { stage, errorName: err instanceof Error ? err.name : 'UnknownError' })
+    }
     return NextResponse.json({ error: 'Erro interno do servidor.' }, { status: 500 })
   }
 }

@@ -33,6 +33,17 @@ const nationalProvider = {
   national_coverage: true,
 }
 
+const legacyStateProvider = {
+  id: 'legacy-state',
+  segment_ids: [],
+  service_area_ibge_codes: [],
+  service_area_state_codes: [],
+  service_area_names: [],
+  national_coverage: false,
+  city: 'Florianópolis',
+  state: 'SC',
+}
+
 test('builds safe PostgREST filters for municipality, state, and segment', async () => {
   const { buildPublicDirectoryFilters } = await loadDirectory()
 
@@ -75,6 +86,27 @@ test('matches local providers by coverage, includes national providers, and filt
   assert.equal(matchesPublicDirectoryFilters(nationalProvider, {
     categoryId: 'aa000000-0000-4000-8000-000000000002',
   }), false)
+})
+
+test('includes legacy profiles by their base UF only when a municipality is not selected', async () => {
+  const { buildPublicDirectoryFilters, matchesPublicDirectoryFilters } = await loadDirectory()
+
+  assert.deepEqual(buildPublicDirectoryFilters({ stateCode: 'SC' }), {
+    locationOr: 'service_area_state_codes.cs.{SC},and(state.eq.SC,service_area_state_codes.eq.{}),national_coverage.eq.true',
+    categoryId: null,
+  })
+  assert.equal(matchesPublicDirectoryFilters(legacyStateProvider, { stateCode: 'SC' }), true)
+  assert.equal(matchesPublicDirectoryFilters(legacyStateProvider, { stateCode: 'RS' }), false)
+  assert.equal(matchesPublicDirectoryFilters(legacyStateProvider, { ibgeCode: '4205407', stateCode: 'SC' }), false)
+  assert.equal(matchesPublicDirectoryFilters({
+    ...legacyStateProvider,
+    service_area_state_codes: ['RS'],
+  }, { stateCode: 'SC' }), false)
+  assert.equal(matchesPublicDirectoryFilters({
+    ...legacyStateProvider,
+    service_area_state_codes: ['RS'],
+    state: 'SC',
+  }, { stateCode: 'SC' }), false)
 })
 
 test('labels national providers explicitly in directory results', async () => {
@@ -174,6 +206,19 @@ test('public pages and message/lead lookups use allowlisted profile and listing 
   assert.doesNotMatch(sources[4], /\.from\('profiles'\)/)
   assert.doesNotMatch(sources[5], /\.from\('profiles'\)/)
   assert.doesNotMatch(sources[6], /\.from\('profiles'\)/)
+})
+
+test('company directory loads live segment IDs and presents filters in a responsive sidebar', async () => {
+  const page = await readSource('src/app/empresas/page.tsx')
+  const filters = await readSource('src/components/directory/CompanyDirectoryFilters.tsx')
+
+  assert.match(page, /from\('categories'\)[\s\S]*?select\('id, name'\)/)
+  assert.doesNotMatch(page, /CATEGORIES_STATIC/)
+  assert.match(page, /lg:grid-cols-\[17rem_minmax\(0,1fr\)\]/)
+  assert.match(filters, /aria-label="Filtros para empresas"/)
+  assert.match(filters, /name="stateCode"/)
+  assert.match(filters, /name="categoryId"/)
+  assert.match(filters, /name="ibgeCode"/)
 })
 
 test('listing views are incremented atomically through a server-role-only function', async () => {
