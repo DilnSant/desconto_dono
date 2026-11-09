@@ -70,6 +70,18 @@ Revisado em 08/11/2026. Base da revisão: HEAD `1f5ac6e` (`fix: valida selecao d
 - Nenhum segredo, chave ou token foi exposto, copiado ou registrado em logs ou arquivos versionados.
 - Nenhuma cobrança real, migração não autorizada ou ativação de produção foi executada.
 
+## Revisão após publicação (08/11/2026)
+
+- [x] Publicadas em `origin/main` as correções independentes da migration v6: `e70f9d7` (checkout, diretório e respostas da galeria), `518eed0` (verificação de sessão antes do cliente administrativo) e `5698ef6` (confirmação do cadastro e preenchimento do login). A verificação Vercel do último commit concluiu com sucesso.
+- [x] Produção: `/empresas?stateCode=SC` retorna HTTP 200 com a sidebar de filtros; `/api/profile/gallery` sem sessão retorna HTTP 401 em JSON; `/api/municipios?state=SC` retorna HTTP 200 com 20 municípios.
+- [x] Cadastro: o texto informa que o link pode atrasar ou falhar, oferece reenvio pelo callback da aplicação e permite abrir o login com e-mail e senha preenchidos por uma passagem em memória (consumo único, expiração em 60 segundos, sem URL ou armazenamento persistente). O bundle publicado contém o novo fluxo.
+- [x] Testes locais: `tests/*.test.mjs` **135/135**, `npm run lint`, `npx tsc --noEmit` e `npm run build -- --webpack` passaram no clone limpo do `main`.
+- [ ] A entrega do e-mail de confirmação continua sem validação: `mailer_autoconfirm=false`, mas os logs e o SMTP do Supabase Auth não são acessíveis pela API pública. Conferir e configurar SMTP no painel Supabase; Resend da aplicação é separado.
+- [ ] O checkout foi publicado, mas não foi concluído um checkout autenticado de sandbox. Rotacionar a chave Sandbox e o token do webhook que apareceram em output de diagnóstico anterior, atualizar variáveis locais/Vercel, conferir webhook no painel Asaas e testar o ciclo completo antes de produção.
+- [ ] Aplicar `supabase/schema_v6.sql` no Supabase. As colunas de público/horários ainda não existem remotamente; as opções Comercial/Residencial e horários de perfil continuam dependendo dessa migration e não foram incluídas nesses commits.
+- [ ] A auditoria remota anterior encontrou o perfil de teste confirmado, porém inativo e sem nome comercial, categoria ou área; `profiles_public` estava vazio. O diretório publicado mostra estado vazio corretamente. Completar o perfil após a migration para que a empresa apareça.
+- [ ] Confirmar `NEXT_PUBLIC_APP_URL`/`VERCEL_URL`, `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` nos ambientes da Vercel e revisar os logs do checkout; não há acesso administrativo da Vercel neste ambiente.
+
 ## Referências
 
 - `README.md` — configuração local e verificações.
