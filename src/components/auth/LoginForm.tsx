@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
@@ -8,6 +8,12 @@ import Image from 'next/image'
 import { supabase } from '@/lib/supabase/client'
 import { ADMIN_LOGIN_EMAIL, getAdminLoginErrorMessage } from '@/lib/auth/admin-login-message'
 import { getAuthCallbackUrl } from '@/lib/auth/redirects'
+import {
+  getSignupHandoffServerSnapshot,
+  getSignupHandoffSnapshot,
+  subscribeSignupHandoff,
+  takeSignupHandoff,
+} from '@/lib/auth/signup-handoff'
 
 interface LoginFormProps {
   initialError?: string
@@ -23,6 +29,13 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
   const [confirmationMessage, setConfirmationMessage] = useState('')
   const [resendingConfirmation, setResendingConfirmation] = useState(false)
   const router = useRouter()
+  const signupHandoff = useSyncExternalStore(
+    subscribeSignupHandoff,
+    getSignupHandoffSnapshot,
+    getSignupHandoffServerSnapshot,
+  )
+  const loginEmail = email || signupHandoff?.email || ''
+  const loginPassword = password || signupHandoff?.password || ''
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,12 +44,18 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
     setConfirmationMessage('')
     setLoading(true)
 
-    const cleanEmail = email.trim().toLowerCase()
+    const handoff = takeSignupHandoff()
+    const cleanEmail = (email || handoff?.email || '').trim().toLowerCase()
+    const loginPassword = password || handoff?.password || ''
+    if (handoff) {
+      setEmail(cleanEmail)
+      setPassword(loginPassword)
+    }
 
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
-        password,
+        password: loginPassword,
       })
 
       if (authError) {
@@ -84,7 +103,7 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
   }
 
   const handleResendConfirmation = async () => {
-    const cleanEmail = email.trim().toLowerCase()
+    const cleanEmail = loginEmail.trim().toLowerCase()
     if (!cleanEmail) {
       setError('Informe seu e-mail para receber um novo link de confirmação.')
       return
@@ -190,9 +209,11 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
           <input
             id="login-email"
             type="email"
-            value={email}
+            value={loginEmail}
             onChange={(e) => {
+              const handoff = takeSignupHandoff()
               setEmail(e.target.value)
+              if (handoff) setPassword(handoff.password)
               setEmailNotConfirmed(false)
               setConfirmationMessage('')
             }}
@@ -210,8 +231,12 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
             <input
               id="login-password"
               type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={loginPassword}
+              onChange={(e) => {
+                const handoff = takeSignupHandoff()
+                if (handoff) setEmail(handoff.email)
+                setPassword(e.target.value)
+              }}
               placeholder="Sua senha"
               required
               className="w-full pl-4 pr-12 py-3 rounded-xl border border-gray-200 text-gray-800 placeholder-gray-400 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"

@@ -13,6 +13,7 @@ import ProfileSegmentsEditor from '@/components/profiles/ProfileSegmentsEditor'
 import { getSubcategoryCategoryLookup } from '@/lib/categories/catalog'
 import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
 import { getAuthCallbackUrl } from '@/lib/auth/redirects'
+import { setSignupHandoff } from '@/lib/auth/signup-handoff'
 import type { Municipality } from '@/lib/geography/municipalities'
 import { validateCoverageSelection, validateProfileSegments, type ProfileSegmentSelection } from '@/lib/profiles/coverage'
 import type { PlanType } from '@/lib/plans/entitlements'
@@ -40,6 +41,8 @@ export default function RegisterForm() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [accountCreated, setAccountCreated] = useState(false)
   const [emailConfirmationPending, setEmailConfirmationPending] = useState(false)
+  const [resendingConfirmation, setResendingConfirmation] = useState(false)
+  const [confirmationMessage, setConfirmationMessage] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
   const registrationPlan: PlanType = 'Gratuito'
@@ -53,6 +56,31 @@ export default function RegisterForm() {
     if (step === 0 && !form.email) { setError('Informe seu e-mail'); return }
     if (step === 1 && !municipality) { setError('Selecione um município oficial'); return }
     if (step < STEPS.length - 1) setStep(step + 1)
+  }
+
+  const handleResendConfirmation = async () => {
+    const email = form.email.trim().toLowerCase()
+    if (!email) {
+      setError('Informe seu e-mail para receber um novo link de confirmação.')
+      return
+    }
+
+    setError('')
+    setConfirmationMessage('')
+    setResendingConfirmation(true)
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: getAuthCallbackUrl(window.location.origin) },
+      })
+      if (resendError) throw resendError
+      setConfirmationMessage('O pedido de reenvio foi aceito. Confira a caixa de entrada e o spam.')
+    } catch (resendError) {
+      setError(resendError instanceof Error ? resendError.message : 'Não foi possível reenviar o link. Tente novamente.')
+    } finally {
+      setResendingConfirmation(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -212,7 +240,30 @@ export default function RegisterForm() {
       {accountCreated && (
         <div role="status" className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
           {emailConfirmationPending ? (
-            <>Conta criada. Confirme o link enviado para {form.email} (verifique também o spam) e depois <Link href="/login" className="font-semibold underline">entre na sua conta</Link>.</>
+            <div className="space-y-3">
+              <p>
+                Conta criada para {form.email}. Ainda falta confirmar o e-mail; o link pode demorar ou não chegar.
+                Confira também a caixa de spam.
+              </p>
+              {confirmationMessage && <p className="text-green-800">{confirmationMessage}</p>}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <button
+                  type="button"
+                  onClick={() => void handleResendConfirmation()}
+                  disabled={resendingConfirmation}
+                  className="font-semibold underline disabled:opacity-60"
+                >
+                  {resendingConfirmation ? 'Reenviando…' : 'Reenviar link de confirmação'}
+                </button>
+                <Link
+                  href="/login"
+                  onClick={() => setSignupHandoff({ email: form.email, password: form.password })}
+                  className="font-semibold underline"
+                >
+                  Entrar na conta
+                </Link>
+              </div>
+            </div>
           ) : (
             <>Conta criada. Acesse sua conta para concluir o cadastro no perfil. <Link href="/perfil" className="font-semibold underline">Abrir perfil</Link> ou <Link href="/login" className="font-semibold underline">entrar</Link>.</>
           )}
