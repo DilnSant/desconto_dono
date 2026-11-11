@@ -30,8 +30,8 @@ const FAQ_ITEMS = [
     a: 'Nunca. Cobrança de 15% a 27% por pedido fica para outros aplicativos. No Desconto do Dono, o cliente fala diretamente com você via WhatsApp, telefone ou balcão, e 100% do valor da venda é seu.',
   },
   {
-    q: 'Como funciona o vídeo do dono?',
-    a: 'Você ou sua equipe gravam um vídeo curto de até 30 segundos apresentando o negócio, os diferenciais e convidando o cliente. É a humanização que gera conexão imediata e confiança.',
+    q: 'Como funciona a Vitrine do Dono?',
+    a: 'Você cria seu perfil profissional apresentando o negócio, os diferenciais da sua empresa e seus benefícios reais. É a humanização e transparência direta de quem empreende, gerando conexão imediata e confiança.',
   },
   {
     q: 'Posso usar a plataforma em qualquer cidade do Brasil?',
@@ -79,7 +79,7 @@ export default function LandingPage() {
             <div className="lg:col-span-7">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400/15 border border-yellow-400/40 text-yellow-300 text-sm font-semibold mb-6 shadow-sm">
                 <Zap className="w-4 h-4 text-yellow-400" />
-                🇧🇷 Vitrine direta com vídeo do dono em 5.571 municípios
+                🇧🇷 Vitrine direta com o dono em 5.571 municípios
               </div>
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-6">
@@ -88,7 +88,7 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-gray-200 text-lg md:text-xl leading-relaxed mb-8 font-normal">
-                Apresente seu negócio com vídeo do próprio dono, seja encontrado por cidade e segmento pelo IBGE e receba contatos diretos no seu WhatsApp — sem intermediários e sem taxas predatórias por venda.
+                Apresente seu negócio diretamente pelo dono, seja encontrado por cidade e segmento pelo IBGE e receba contatos diretos no seu WhatsApp — sem intermediários e sem taxas predatórias por venda.
               </p>
 
               <div className="flex flex-wrap gap-4 mb-8">
@@ -135,7 +135,7 @@ export default function LandingPage() {
                 <ul className="space-y-4 text-gray-200">
                   <li className="flex items-start gap-3">
                     <Users className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                    <span><strong>Vídeo do Dono:</strong> o cliente conhece quem está por trás antes de ir até você.</span>
+                    <span><strong>A Marca é o Dono:</strong> o cliente conhece quem está por trás do negócio antes de ir até você.</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
@@ -171,8 +171,8 @@ export default function LandingPage() {
               desc: 'Cadastre sua empresa, cidade de atuação e segmentos atendidos em minutos.',
             },
             {
-              step: '02', icon: '🎬', title: 'Grave o vídeo do dono',
-              desc: 'Um vídeo autêntico de 30 segundos contando quem você é e sua oferta real.',
+              step: '02', icon: '🤝', title: 'Apresente sua história e oferta',
+              desc: 'Destaque quem você é, sua proposta de valor e seus benefícios exclusivos.',
             },
             {
               step: '03', icon: '📍', title: 'Apareça na sua cidade',

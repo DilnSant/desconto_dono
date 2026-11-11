@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Cadastro Gratuito — Desconto do Dono',
-  description: 'Crie seu perfil grátis, publique ofertas locais com vídeo do dono e receba clientes no WhatsApp sem comissão.',
+  description: 'Crie seu perfil grátis, publique ofertas locais direto com o dono e receba clientes no WhatsApp sem comissão.',
 }
 
 
@@ -44,7 +44,7 @@ export default async function CadastroPage() {
             ao Cliente, <span style={{ color: '#FEDF00' }}>Sem Comissão</span>
           </h2>
           <p className="text-white/80 text-base leading-relaxed mb-8">
-            Cadastre-se gratuitamente em 5.571 municípios, publique suas ofertas com vídeo do dono e receba clientes no WhatsApp.
+            Cadastre-se gratuitamente em 5.571 municípios, publique suas ofertas direto com o dono e receba clientes no WhatsApp.
           </p>
           <div className="space-y-3 text-left">
             {[

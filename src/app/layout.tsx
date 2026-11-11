@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   description:
     'A ponte que conecta os melhores empreendedores do Brasil. Networking e vantagens exclusivas.',
   keywords: [
-    'desconto do dono', 'clube de descontos', 'negócios locais', 'vídeo marketing',
+    'desconto do dono', 'clube de descontos', 'negócios locais', 'comércio local',
     'empresas locais', 'descontos exclusivos', 'promoções', 'empreendedores brasileiros',
     'networking empresarial',
   ],

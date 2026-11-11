@@ -7,7 +7,7 @@
 ### 1.1 O que é o Desconto do Dono
 O **Desconto do Dono** é uma plataforma e clube de negócios que conecta diretamente empresários, comerciantes e profissionais autônomos aos consumidores locais e a outros empreendedores em todo o território nacional.
 
-Diferente de marketplaces e plataformas genéricas de cupons, o Desconto do Dono foi concebido com foco na **humanização do comércio local**, na **autenticidade das conexões** e na **geração de networking e negócios confiáveis**. A plataforma destaca a figura do próprio dono do estabelecimento — sua história, seus vídeos diretos, sua reputação e seus benefícios reais —, criando uma relação de confiança mútua e eliminando intermediários predatórios.
+Diferente de marketplaces e plataformas genéricas de cupons, o Desconto do Dono foi concebido com foco na **humanização do comércio local**, na **autenticidade das conexões** e na **geração de networking e negócios confiáveis**. A plataforma destaca a figura do próprio dono do estabelecimento — sua história, sua reputação, seu contato direto e seus benefícios reais —, criando uma relação de confiança mútua e eliminando intermediários predatórios.
 
 ---
 
@@ -22,7 +22,7 @@ A missão é dar voz e protagonismo ao empresário brasileiro, valorizando quem 
 > **"Tornar-se o ecossistema de negócios locais e de networking empresarial de maior autoridade e autenticidade do Brasil, estabelecendo um padrão de mercado protegido por barreiras competitivas reais (Moat), tecnologia inteligente e uma comunidade engajada e leal."**
 
 ### 2.3 Proposta de Valor Única (PVP)
-1. **Autenticidade e Humanização:** O consumidor não compra apenas um produto ou serviço com desconto; ele conhece quem está por trás do negócio por meio de vídeos gravados pelo próprio dono.
+1. **Autenticidade e Humanização:** O consumidor não compra apenas um produto ou serviço com desconto; ele conhece quem está por trás do negócio, sua trajetória e sua proposta real.
 2. **Conexões e Contratos Seguros (B2B e B2C):** Um ambiente onde empresários encontram outros empresários com histórico verificado para fechar parcerias, fornecimento e contratações mútuas.
 3. **Liberdade Comercial e Sustentabilidade:** Ao contrário de aplicativos de entrega ou marketplaces de cupons que retêm comissões pesadas, o lojista tem controle total sobre suas ofertas e mantém contato direto com seus clientes (via WhatsApp, telefone ou balcão).
 4. **Abrangência Geográfica com Raiz Local:** Presença nacional estruturada município a município pelo catálogo oficial do IBGE, permitindo busca hiperlocal ou atuação nacional conforme o modelo de cada negócio.
@@ -40,7 +40,7 @@ A missão é dar voz e protagonismo ao empresário brasileiro, valorizando quem 
 - **Header e Identidade Global:** Logomarca oficial circular e transparente (`logo.DDD2.jpeg`), navegação rápida entre Diretório de Empresas, Benefícios, Planos, Anúncios e Área do Membro.
 - **Seção "Conheça quem já faz parte" (Empresas Participantes):**
   - **Título:** *Conheça quem já faz parte — Empresas que acreditam em conexões reais com seus clientes.*
-  - **Cards de Empresas:** Apresentação em grid responsivo (3 colunas no desktop, lista empilhada no mobile), exibindo logotipo, razão/nome fantasia, município/UF, segmentos de atuação e botão com link direto para assistir ao vídeo do proprietário.
+  - **Cards de Empresas:** Apresentação em grid responsivo (3 colunas no desktop, lista empilhada no mobile), exibindo logotipo, razão/nome fantasia, município/UF, segmentos de atuação e botão com link direto de contato com o proprietário.
   - **Ação Global:** Botão "Ver todas as empresas" direcionando para o catálogo de busca e filtros.
 - **Cards de Planos e Assinatura:**
   - Layout em 3 colunas no desktop e empilhado no mobile.
@@ -48,10 +48,9 @@ A missão é dar voz e protagonismo ao empresário brasileiro, valorizando quem 
   - Destaque visual para o plano mais vantajoso.
 - **Tooltips Informativos e Educacionais (🛈 ou ❓):**
   - Textos de auxílio ao passar o mouse ou tocar em termos específicos para eliminar dúvidas e aumentar a confiança do assinante:
-    - *Atualização de vídeo 🛈:* "Você pode solicitar um novo vídeo promocional após o período indicado no seu plano."
     - *Selo de empresa verificada 🛈:* "Concedido apenas a empresas com dados cadastrais validados e histórico positivo na plataforma."
     - *Analytics avançado 🛈:* "Relatórios com visualizações, cliques no botão de contato e tempo médio de permanência."
-    - *Publicação permanente 🛈:* "Enquanto o plano estiver ativo, o anúncio e o vídeo permanecem visíveis sem interrupções."
+    - *Publicação permanente 🛈:* "Enquanto o plano estiver ativo, o perfil e os anúncios permanecem visíveis sem interrupções."
 - **Rodapé Institucional:**
   - Área imponente (`bg-gray-950`) com texto de apoio à economia real brasileira, links de conformidade (Termos de Uso, Privacidade, LGPD) e chancela de desenvolvimento.
 
@@ -67,8 +66,6 @@ O modelo de monetização do Desconto do Dono é baseado em **assinatura recorre
 |---|:---:|:---:|:---:|:---:|
 | **Mensalidade** | R$ 0 | R$ 39,90 / mês | R$ 69,90 / mês | R$ 99,90 / mês |
 | **Opção Anual** | — | R$ 358,80 / ano | R$ 598,80 / ano | R$ 958,80 / ano |
-| **Vídeos Promocionais** | — | 1 vídeo de até 30s | 2 vídeos de até 30s | 3 vídeos de até 30s |
-| **Atualização do Vídeo** | — | A cada 12 meses | A cada 6 meses | A cada 3 meses |
 | **Anúncios Ativos** | 1 anúncio | Até 3 anúncios | Até 5 anúncios | Ilimitados / Destaque |
 | **Canais de Contato** | Internos | WhatsApp, Endereço, Fone | Redes sociais e Site inclusos | Todos os canais + WhatsApp 24h |
 | **Galeria de Fotos** | Não | Básica (3 fotos) | Expandida (10 fotos) | Completa (alta resolução) |
@@ -90,7 +87,7 @@ Documentação fundamentada na análise de mercado para blindar o Desconto do Do
 ### 5.1 Ameaça de Novos Entrantes
 - **Cenário:** Barreiras tecnológicas para criar um diretório simples são baixas. O desafio real reside na retenção de lojistas, engajamento e liquidez de ofertas locais.
 - **Oportunidades Ocultas:**
-  - Posicionamento em autenticidade via vídeo do dono: estabelece um vínculo emocional que clones de software não conseguem copiar.
+  - Posicionamento em autenticidade via protagonismo do dono: estabelece um vínculo emocional que plataformas frias não conseguem copiar.
   - Criação de um ecossistema com vantagens reais, experiências locais e benefícios exclusivos.
 - **Ameaças Invisíveis:**
   - Grandes plataformas (como iFood, Mercado Livre ou marketplaces de bancos) testando programas similares.
@@ -106,12 +103,12 @@ Documentação fundamentada na análise de mercado para blindar o Desconto do Do
   - Flexibilidade total para o lojista definir descontos de acordo com sua margem e sazonalidade.
   - Integração com programas e ferramentas que o lojista já utiliza (WhatsApp, redes sociais).
 - **Ameaças Invisíveis:**
-  - Empresários gravarem vídeos de baixa qualidade ou hesitarem em aparecer.
+  - Empresários hesitarem em preencher o perfil ou manter dados atualizados.
   - Redução súbita de benefícios por pressão no caixa das empresas parceiras.
 - **Ações Estratégicas:**
-  - Fornecer suporte, roteiros práticos e kits rápidos de orientação para gravação de vídeos de alto impacto.
+  - Fornecer suporte e roteiros práticos para estruturação de ofertas de alto impacto.
   - Consultorias e materiais rápidos de marketing para os lojistas parceiros.
-- **KPIs de Controle:** Taxa de retenção/renovação de parceiros, engajamento nos vídeos e conversão de visitas em mensagens/leads.
+- **KPIs de Controle:** Taxa de retenção/renovação de parceiros e conversão de visitas em mensagens/leads.
 
 ### 5.3 Poder de Barganha dos Clientes (Consumidores e Membros)
 - **Cenário:** O consumidor moderno é bombardeado por promoções, anúncios digitais e aplicativos de cupom.
@@ -139,10 +136,10 @@ Documentação fundamentada na análise de mercado para blindar o Desconto do Do
 ### 5.5 Rivalidade entre Concorrentes Existentes
 - **Cenário:** Concorrência fragmentada entre guias comerciais locais, portais de cupons e anúncios de redes sociais.
 - **Oportunidades Ocultas:**
-  - Posicionamento único como comunidade de donos de negócios patriotas e dedicados, criando senso de pertencimento e orgulho de participar.
+  - Posicionamento único como comunidade de donos de negócios dedicados, criando senso de pertencimento e orgulho de participar.
   - Parcerias estratégicas com formadores de opinião locais e associações comerciais.
 - **Ameaças Invisíveis:**
-  - Plataformas consolidadas lançando áreas de "vídeos curtos locais".
+  - Plataformas consolidadas competindo por audiência local.
 - **Ações Estratégicas:**
   - Construir barreiras de relacionamento difíceis de transpor; quem é parceiro antigo tem histórico e avaliações consolidadas.
 - **KPIs de Controle:** Taxa de renovação contratual, engajamento orgânico e índice de compartilhamento comunitário.
@@ -219,6 +216,6 @@ Para dar sustentação a essa estratégia de negócio e garantir escalabilidade,
 ## 8. Resumo Executivo das Diretrizes
 
 1. **O Dono é a Marca:** Todo o design e a experiência colocam a pessoa do empresário no centro, transformando transações frias em relacionamentos duradouros.
-2. **Monetização Justa e Sustentável:** O plano Gratuito garante presença; os planos Essencial, Profissional e Premium destravam ferramentas de escala, autoridade, vídeos e alcance geográfico ampliado.
+2. **Monetização Justa e Sustentável:** O plano Gratuito garante presença; os planos Essencial, Profissional e Premium destravam ferramentas de escala, autoridade, galeria ampliada e alcance geográfico.
 3. **Segurança e Idempotência:** Cada funcionalidade técnica é testada e blindada contra falhas ou inconsistências de dados.
 4. **Crescimento em Camadas:** O lançamento foca na experiência imediata de busca, publicação e contato; as camadas de gamificação, IA e experiências imersivas são acopladas sobre uma base estável e validada.
