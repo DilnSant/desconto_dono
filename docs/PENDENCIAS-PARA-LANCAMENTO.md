@@ -70,6 +70,15 @@ Revisado em 08/11/2026. Base da revisão: HEAD `1f5ac6e` (`fix: valida selecao d
 - Nenhum segredo, chave ou token foi exposto, copiado ou registrado em logs ou arquivos versionados.
 - Nenhuma cobrança real, migração não autorizada ou ativação de produção foi executada.
 
+## Revisão de copywriting e atratividade da oferta (10/11/2026)
+
+- [x] Preenchida e versionada a planilha `Planilha_Oferta_Desconto_do_Dono.xlsx` com os 5 passos, pacotes de preços e versões da oferta do Desconto do Dono em `.superpowers/implantar/`.
+- [x] Documento estratégico de identidade, proposta de valor, moat e análise Porter versionado em `.superpowers/implantar/PROJETO_DESCONTO_DO_DONO.md`.
+- [x] Implantação do Método Vitrine do Dono e nova redação de alta conversão nas páginas de entrada (`LandingPage.tsx`, `/cadastro`, `/planos` e metadata em `/page.tsx`): 100% da receita para o lojista, sem comissão por pedido, busca em 5.571 municípios do IBGE e contato direto no WhatsApp.
+- [x] Reconciliação completa com `origin/main` realizada; conflitos de mesclagem resolvidos preservando as melhorias de handoff e integridade dos testes.
+- [x] Validações locais executadas: `npx tsc --noEmit` passou com 0 erros; `npm run lint` passou com 0 avisos.
+- [x] Push dos commits pendentes para `origin/main` concluído com sucesso.
+
 ## Revisão após publicação (08/11/2026)
 
 - [x] Publicadas em `origin/main` as correções independentes da migration v6: `e70f9d7` (checkout, diretório e respostas da galeria), `518eed0` (verificação de sessão antes do cliente administrativo) e `5698ef6` (confirmação do cadastro e preenchimento do login). A verificação Vercel do último commit concluiu com sucesso.
