@@ -6,7 +6,14 @@ import test from 'node:test'
 test('routes signup confirmation through the app callback on the active site origin', async () => {
   const registration = await readFile(new URL('../src/components/auth/RegisterForm.tsx', import.meta.url), 'utf8')
   assert.match(registration, /emailRedirectTo:\s*getAuthCallbackUrl\(window\.location\.origin\)/)
-  assert.match(registration, /Confirme o link enviado para \{form\.email\}/)
+  assert.match(registration, /supabase\.auth\.resend\(/)
+  assert.match(registration, /type:\s*'signup'/)
+  assert.match(registration, /emailRedirectTo:\s*getAuthCallbackUrl\(window\.location\.origin\)/)
+  assert.match(registration, /sessionStorage\.setItem\('desconto-dodono:signup-email'/)
+  assert.match(registration, /não recebeu/i)
+  assert.match(registration, /Entrar na conta/)
+  assert.doesNotMatch(registration, /sessionStorage\.setItem\([^\n]*password/i)
+  assert.doesNotMatch(registration, /Confirme o link enviado para \{form\.email\}/)
 
   const callback = await readFile(new URL('../src/app/auth/callback/route.ts', import.meta.url), 'utf8')
   assert.match(callback, /searchParams\.get\('code'\)/)
@@ -18,6 +25,8 @@ test('lets an unconfirmed user resend a signup email through the same callback',
   assert.match(login, /supabase\.auth\.resend\(/)
   assert.match(login, /type:\s*'signup'/)
   assert.match(login, /emailRedirectTo:\s*getAuthCallbackUrl\(window\.location\.origin\)/)
+  assert.match(login, /sessionStorage\.getItem\('desconto-dodono:signup-email'\)/)
+  assert.match(login, /sessionStorage\.removeItem\('desconto-dodono:signup-email'\)/)
 })
 
 test('builds an absolute callback URL at the current app origin', async () => {

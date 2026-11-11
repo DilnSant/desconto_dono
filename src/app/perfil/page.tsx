@@ -1,26 +1,51 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import {
   Camera, Save, Loader2, AlertCircle, CheckCircle2,
-  Globe, AtSign, Phone, Mail, MapPin, ChevronDown
+  Globe, AtSign, Phone, Mail, MapPin, ChevronDown, Clock3
 } from 'lucide-react'
 import ProfileGallery from '@/components/profile/ProfileGallery'
+import ProfileSegmentsEditor from '@/components/profiles/ProfileSegmentsEditor'
 import { supabase } from '@/lib/supabase/client'
 import { db } from '@/lib/supabase/db'
 import { ESTADOS_BR } from '@/lib/constants/categories'
 import { getInitials } from '@/lib/utils/helpers'
+import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
+import { getSubcategoryCategoryLookup } from '@/lib/categories/catalog'
+import { validateProfileSegments, type ProfileSegmentSelection } from '@/lib/profiles/coverage'
+import { normalizeStoredPlanType, type PlanType } from '@/lib/plans/entitlements'
 import {
-  hydrateCategorySelection,
-  selectPrimaryCategory,
-  selectPrimarySubcategory,
-  toggleCategory,
-  toggleSubcategory,
-  type ProfileCategorySelection,
-} from '@/lib/profile/category-selection'
-import type { Category, Profile, Subcategory } from '@/types/database'
+  createEmptyServiceHours,
+  hydrateServiceHours,
+  serializeServiceHours,
+  SERVICE_HOUR_DAYS,
+  validateServiceHours,
+  type ServiceHoursForm,
+} from '@/lib/profiles/service-hours'
+import type { Json, Profile } from '@/types/database'
+
+type SavedServiceArea = {
+  ibge_code: string | null
+  municipality_name: string | null
+  state_code: string | null
+  is_national: boolean
+  declared_non_presential: boolean
+  selection_order: number
+}
+
+function SignupSetupNotice() {
+  const searchParams = useSearchParams()
+  if (searchParams.get('cadastro') !== 'pendente') return null
+
+  return (
+    <div role="alert" className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      Sua conta foi confirmada, mas não foi possível concluir os dados iniciais. Revise seus segmentos e salve o perfil.
+    </div>
+  )
+}
 
 export default function PerfilPage() {
   const router = useRouter()
@@ -41,19 +66,11 @@ export default function PerfilPage() {
 
   const [loadAttempt, setLoadAttempt] = useState(0)
   const avatarInputRef = useRef<HTMLInputElement>(null)
-  const [categories, setCategories] = useState<Category[]>([])
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
-  const [categorySelection, setCategorySelection] = useState<ProfileCategorySelection>({
-    categoryIds: [],
-    subcategoryIds: [],
-    primaryCategoryId: null,
-    primarySubcategoryId: null,
-  })
-
-  const subcategoryCategoryById = subcategories.reduce<Record<string, string>>((map, subcategory) => {
-    map[subcategory.id] = subcategory.category_id
-    return map
-  }, {})
+  const [profileSegments, setProfileSegments] = useState<ProfileSegmentSelection>({ segments: [] })
+  const [serviceAreas, setServiceAreas] = useState<SavedServiceArea[]>([])
+  const [profilePlan, setProfilePlan] = useState<PlanType>('Gratuito')
+  const [serviceHours, setServiceHours] = useState<ServiceHoursForm>(createEmptyServiceHours())
+  const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
 
   useEffect(() => {
     let cancelled = false
@@ -65,34 +82,66 @@ export default function PerfilPage() {
         if (authError) throw authError
         if (!user) { router.replace('/login'); return }
 
-        const [profileResult, categoryResult, subcategoryResult] = await Promise.all([
+        const [profileResult, segmentResult, subcategoryResult, serviceAreaResult, planResult] = await Promise.all([
           db.from('profiles').select('*').eq('id', user.id).single(),
-          db.from('categories').select('*').order('name'),
-          db.from('subcategories').select('*').order('name'),
+          db.from('profile_categories')
+            .select('id, category_id, selection_order, service_audiences')
+            .eq('profile_id', user.id)
+            .order('selection_order'),
+          db.from('profile_subcategories')
+            .select('profile_category_id, subcategory_id, selection_order')
+            .order('selection_order'),
+          db.from('profile_service_areas')
+            .select('ibge_code, municipality_name, state_code, is_national, declared_non_presential, selection_order')
+            .eq('profile_id', user.id)
+            .order('selection_order'),
+          db.rpc('get_effective_plan', { p_profile_id: user.id }),
         ])
 
         if (profileResult.error) throw profileResult.error
-        if (categoryResult.error) throw categoryResult.error
+        if (segmentResult.error) throw segmentResult.error
         if (subcategoryResult.error) throw subcategoryResult.error
+        if (serviceAreaResult.error) throw serviceAreaResult.error
+        if (planResult.error) throw planResult.error
         if (!profileResult.data) throw new Error('PROFILE_NOT_FOUND')
 
         const profileData: Profile = profileResult.data
-        const categoryData: Category[] = categoryResult.data ?? []
-        const subcategoryData: Subcategory[] = subcategoryResult.data ?? []
-        const parentBySubcategory = subcategoryData.reduce<Record<string, string>>((map, subcategory) => {
-          map[subcategory.id] = subcategory.category_id
-          return map
-        }, {})
-        const hydratedSelection = hydrateCategorySelection(profileData)
-        const validSelection = hydratedSelection.primaryCategoryId
-          ? selectPrimaryCategory(hydratedSelection, hydratedSelection.primaryCategoryId, parentBySubcategory)
-          : { ...hydratedSelection, primarySubcategoryId: null }
+        const savedSubcategories = subcategoryResult.data ?? []
+        const savedSegments = (segmentResult.data ?? []).map((segment: {
+          id: string
+          category_id: string
+          selection_order: number
+          service_audiences: string[] | null
+        }, index: number) => {
+          const serviceAudiences = (segment.service_audiences ?? [])
+            .filter((audience): audience is 'commercial' | 'residential' =>
+              audience === 'commercial' || audience === 'residential',
+            )
+          return {
+            categoryId: segment.category_id,
+            subcategoryIds: savedSubcategories
+              .filter((subcategory: { profile_category_id: string }) => subcategory.profile_category_id === segment.id)
+              .map((subcategory: { subcategory_id: string }) => subcategory.subcategory_id),
+            isPrimary: index === 0,
+            serviceAudiences: serviceAudiences.length > 0 ? serviceAudiences : ['commercial', 'residential'],
+          }
+        })
+        if (savedSegments.length === 0 && profileData.category_id) {
+          savedSegments.push({
+            categoryId: profileData.category_id,
+            subcategoryIds: profileData.subcategory_id ? [profileData.subcategory_id] : [],
+            isPrimary: true,
+            serviceAudiences: ['commercial', 'residential'],
+          })
+        }
+        const storedPlan = typeof planResult.data === 'string' ? planResult.data : profileData.plan_type
 
         if (cancelled) return
         setProfile(profileData)
-        setCategories(categoryData)
-        setSubcategories(subcategoryData)
-        setCategorySelection(validSelection)
+        setProfileSegments({ segments: savedSegments })
+        setServiceAreas((serviceAreaResult.data ?? []) as SavedServiceArea[])
+        setProfilePlan(normalizeStoredPlanType(storedPlan))
+        setServiceHours(hydrateServiceHours(profileData.service_hours))
         setForm({
           full_name: profileData.full_name || '',
           business_name: profileData.business_name || '',
@@ -134,6 +183,27 @@ export default function PerfilPage() {
     e.preventDefault()
     setError('')
     setSuccess(false)
+
+    const hoursError = validateServiceHours(serviceHours)
+    if (hoursError) { setError(hoursError); return }
+    if (categoriesLoading) { setError('Aguarde o carregamento das categorias.'); return }
+    if (categoriesError) { setError(categoriesError); return }
+    if (profileSegments.segments.length === 0) {
+      setError('Selecione ao menos um segmento para o seu perfil.')
+      return
+    }
+    const availableCategoryIds = new Set(categories.map((category) => category.id))
+    if (profileSegments.segments.some((segment) => !availableCategoryIds.has(segment.categoryId))) {
+      setError('Revise os segmentos do perfil e selecione categorias disponíveis.')
+      return
+    }
+    const segmentValidation = validateProfileSegments(
+      profilePlan,
+      profileSegments,
+      getSubcategoryCategoryLookup(categories),
+    )
+    if (!segmentValidation.valid) { setError(segmentValidation.errors.join(' ')); return }
+
     setSaving(true)
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -150,9 +220,36 @@ export default function PerfilPage() {
         throw uploadError
       }
 
+      const orderedSegments = [...profileSegments.segments].sort(
+        (first, second) => Number(second.isPrimary) - Number(first.isPrimary),
+      )
+      const { error: coverageError } = await db.rpc('save_profile_coverage_with_audiences', {
+        p_service_areas: serviceAreas.map((area) => ({
+          ibgeCode: area.ibge_code,
+          name: area.municipality_name,
+          stateCode: area.state_code,
+          isNational: area.is_national,
+          declaredNonPresential: area.declared_non_presential,
+          selectionOrder: area.selection_order,
+        })),
+        p_segments: orderedSegments.map((segment, selectionOrder) => ({
+          categoryId: segment.categoryId,
+          serviceAudiences: segment.serviceAudiences,
+          selectionOrder,
+          subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
+            subcategoryId,
+            selectionOrder: subcategoryOrder,
+          })),
+        })),
+        p_declared_non_presential: serviceAreas.some((area) => area.is_national && area.declared_non_presential),
+        p_service_hours: serializeServiceHours(serviceHours) as Json,
+      })
+      if (coverageError) throw coverageError
+
       const profileUpdates: Partial<Profile> = {
         full_name: form.full_name,
         business_name: form.business_name || null,
+        is_active: true,
         bio: form.bio || null,
         city: form.city,
         state: form.state,
@@ -160,12 +257,6 @@ export default function PerfilPage() {
         instagram_url: form.instagram_url || null,
         email_public: form.email_public || null,
         whatsapp: form.whatsapp || null,
-        category_ids: categorySelection.categoryIds,
-        subcategory_ids: categorySelection.subcategoryIds,
-        primary_category_id: categorySelection.primaryCategoryId,
-        primary_subcategory_id: categorySelection.primarySubcategoryId,
-        category_id: categorySelection.primaryCategoryId,
-        subcategory_id: categorySelection.primarySubcategoryId,
         avatar_url,
       }
 
@@ -173,6 +264,13 @@ export default function PerfilPage() {
       if (updateError) throw updateError
 
       setProfile((current) => current ? { ...current, ...profileUpdates } : current)
+      if (new URLSearchParams(window.location.search).get('cadastro') === 'pendente') {
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: { pending_profile_setup: null },
+        })
+        if (metadataError) console.error('[PERFIL] Não foi possível limpar os dados temporários do cadastro', metadataError)
+        router.replace('/perfil')
+      }
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
     } catch (saveError) {
@@ -214,6 +312,7 @@ export default function PerfilPage() {
     <div className="max-w-3xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-black text-gray-900 mb-2">Meu Perfil</h1>
       <p className="text-gray-500 mb-8">Personalize como você aparece na plataforma</p>
+      <Suspense fallback={null}><SignupSetupNotice /></Suspense>
 
       <form id="profile-form" onSubmit={handleSave} className="space-y-6">
 
@@ -303,109 +402,76 @@ export default function PerfilPage() {
 
         {/* ===== ÁREA DE ATUAÇÃO ===== */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
-          <h2 className="font-black text-gray-800 text-lg">Área de Atuação</h2>
+          <h2 className="font-black text-gray-800 text-lg">Segmentos do Perfil</h2>
           <p className="text-sm text-gray-500">
-            Selecione suas áreas e marque uma categoria e uma subcategoria principais.
+            Defina as categorias, subcategorias e o tipo de cliente atendido em cada segmento.
           </p>
-          {categories.length === 0 ? (
-            <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
-              Nenhuma categoria está disponível no momento.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {categories.map((category) => {
-                const isCategorySelected = categorySelection.categoryIds.includes(category.id)
-                const categorySubcategories = subcategories.filter(
-                  (subcategory) => subcategory.category_id === category.id
-                )
+          <ProfileSegmentsEditor
+            categories={categories}
+            loading={categoriesLoading}
+            catalogError={categoriesError}
+            plan={profilePlan}
+            value={profileSegments}
+            onChange={setProfileSegments}
+          />
+        </div>
 
-                return (
-                  <div key={category.id} className="rounded-2xl border border-gray-100 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <label htmlFor={`category-${category.id}`} className="flex items-center gap-3 font-semibold text-gray-800">
-                        <input
-                          id={`category-${category.id}`}
-                          type="checkbox"
-                          checked={isCategorySelected}
-                          onChange={(event) => setCategorySelection((current) => toggleCategory(
-                            current,
-                            category.id,
-                            event.target.checked,
-                            subcategoryCategoryById
-                          ))}
-                          className="h-4 w-4 accent-green-700"
-                        />
-                        {category.name}
-                      </label>
-                      <label htmlFor={`primary-category-${category.id}`} className="flex items-center gap-2 text-sm text-gray-600">
-                        <input
-                          id={`primary-category-${category.id}`}
-                          type="radio"
-                          name="primary-category"
-                          checked={categorySelection.primaryCategoryId === category.id}
-                          disabled={!isCategorySelected}
-                          onChange={() => setCategorySelection((current) => selectPrimaryCategory(
-                            current,
-                            category.id,
-                            subcategoryCategoryById
-                          ))}
-                          className="h-4 w-4 accent-green-700"
-                        />
-                        Principal
-                      </label>
-                    </div>
-
-                    {isCategorySelected && categorySubcategories.length > 0 && (
-                      <div className="ml-3 mt-4 space-y-3 border-l-2 border-gray-100 pl-4">
-                        {categorySubcategories.map((subcategory) => {
-                          const isSubcategorySelected = categorySelection.subcategoryIds.includes(subcategory.id)
-
-                          return (
-                            <div key={subcategory.id} className="flex flex-wrap items-center justify-between gap-3">
-                              <label htmlFor={`subcategory-${subcategory.id}`} className="flex items-center gap-3 text-sm text-gray-700">
-                                <input
-                                  id={`subcategory-${subcategory.id}`}
-                                  type="checkbox"
-                                  checked={isSubcategorySelected}
-                                  onChange={(event) => setCategorySelection((current) => toggleSubcategory(
-                                    current,
-                                    subcategory.id,
-                                    event.target.checked,
-                                    subcategoryCategoryById
-                                  ))}
-                                  className="h-4 w-4 accent-green-700"
-                                />
-                                {subcategory.name}
-                              </label>
-                              <label htmlFor={`primary-subcategory-${subcategory.id}`} className="flex items-center gap-2 text-xs text-gray-500">
-                                <input
-                                  id={`primary-subcategory-${subcategory.id}`}
-                                  type="radio"
-                                  name="primary-subcategory"
-                                  checked={categorySelection.primarySubcategoryId === subcategory.id}
-                                  disabled={
-                                    !isSubcategorySelected
-                                    || categorySelection.primaryCategoryId !== category.id
-                                  }
-                                  onChange={() => setCategorySelection((current) => selectPrimarySubcategory(
-                                    current,
-                                    subcategory.id,
-                                    subcategoryCategoryById
-                                  ))}
-                                  className="h-4 w-4 accent-green-700"
-                                />
-                                Subcategoria principal
-                              </label>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+        {/* ===== HORÁRIO DE ATENDIMENTO ===== */}
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
+          <h2 className="font-black text-gray-800 text-lg flex items-center gap-2">
+            <Clock3 className="w-5 h-5 text-green-600" /> Horário de Atendimento
+          </h2>
+          <p className="text-sm text-gray-500">
+            Informe seus horários por dia. Esses dados aparecem somente no perfil público.
+          </p>
+          <div className="space-y-3">
+            {SERVICE_HOUR_DAYS.map(({ key, label }) => {
+              const day = serviceHours[key]
+              return (
+                <div key={key} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-100 p-3 sm:grid-cols-[minmax(130px,1fr)_1fr_1fr_auto] sm:items-center">
+                  <span className="text-sm font-semibold text-gray-700">{label}</span>
+                  <label className="text-xs text-gray-500">
+                    Abertura
+                    <input
+                      type="time"
+                      value={day.open}
+                      disabled={day.closed}
+                      onChange={(event) => setServiceHours((current) => ({
+                        ...current,
+                        [key]: { ...current[key], open: event.target.value },
+                      }))}
+                      className="input-field mt-1 disabled:bg-gray-50 disabled:text-gray-400"
+                    />
+                  </label>
+                  <label className="text-xs text-gray-500">
+                    Fechamento
+                    <input
+                      type="time"
+                      value={day.close}
+                      disabled={day.closed}
+                      onChange={(event) => setServiceHours((current) => ({
+                        ...current,
+                        [key]: { ...current[key], close: event.target.value },
+                      }))}
+                      className="input-field mt-1 disabled:bg-gray-50 disabled:text-gray-400"
+                    />
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-gray-600 sm:pt-4">
+                    <input
+                      type="checkbox"
+                      checked={day.closed}
+                      onChange={(event) => setServiceHours((current) => ({
+                        ...current,
+                        [key]: { ...current[key], closed: event.target.checked },
+                      }))}
+                      className="h-4 w-4 accent-green-700"
+                    />
+                    Fechado
+                  </label>
+                </div>
+              )
+            })}
+          </div>
         </div>
 
         {/* ===== CONTATO ===== */}

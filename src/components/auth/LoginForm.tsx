@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
@@ -23,6 +23,22 @@ export default function LoginForm({ initialError = '' }: LoginFormProps) {
   const [confirmationMessage, setConfirmationMessage] = useState('')
   const [resendingConfirmation, setResendingConfirmation] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    let timeout: number | undefined
+    try {
+      const signupEmail = window.sessionStorage.getItem('desconto-dodono:signup-email')
+      if (!signupEmail) return
+      window.sessionStorage.removeItem('desconto-dodono:signup-email')
+      const normalizedEmail = signupEmail.trim()
+      if (normalizedEmail) timeout = window.setTimeout(() => setEmail(normalizedEmail), 0)
+    } catch {
+      // The user can enter the email manually when session storage is unavailable.
+    }
+    return () => {
+      if (timeout !== undefined) window.clearTimeout(timeout)
+    }
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()

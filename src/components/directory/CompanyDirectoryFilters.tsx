@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Search } from 'lucide-react'
 import MunicipalitySelect from '@/components/geography/MunicipalitySelect'
 import type { Municipality } from '@/lib/geography/municipalities'
@@ -17,6 +18,7 @@ interface CompanyDirectoryFiltersProps {
   initialStateCode?: string
   initialMunicipalityName?: string
   initialCategoryId?: string
+  catalogError?: string | null
 }
 
 export default function CompanyDirectoryFilters({
@@ -25,6 +27,7 @@ export default function CompanyDirectoryFilters({
   initialStateCode = '',
   initialMunicipalityName = '',
   initialCategoryId = '',
+  catalogError = null,
 }: CompanyDirectoryFiltersProps) {
   const [municipality, setMunicipality] = useState<Municipality | null>(
     initialIbgeCode && initialStateCode
@@ -41,8 +44,17 @@ export default function CompanyDirectoryFilters({
     <form
       action="/empresas"
       method="get"
-      className="grid gap-4 rounded-2xl border border-[#dce8df] bg-white p-5 md:grid-cols-[minmax(0,1.5fr)_minmax(9rem,0.7fr)_minmax(12rem,1fr)_auto] md:items-end"
+      aria-label="Filtros para empresas"
+      className="space-y-5 rounded-2xl border border-[#dce8df] bg-white p-5 shadow-sm"
     >
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-[#183323]">Filtros</h2>
+        <Link href="/empresas" className="text-xs font-semibold text-[#007a39] hover:underline">
+          Limpar
+        </Link>
+      </div>
+      <p className="text-sm leading-6 text-gray-500">Escolha onde e em qual segmento deseja buscar.</p>
+
       <MunicipalitySelect
         id="directory-municipality"
         label="Município"
@@ -94,11 +106,12 @@ export default function CompanyDirectoryFilters({
             <option key={category.id} value={category.id}>{category.name}</option>
           ))}
         </select>
+        {catalogError && <p role="alert" className="text-xs text-red-700">{catalogError}</p>}
       </div>
 
       <button
         type="submit"
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#005c2d] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#004822] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005c2d]"
+        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#005c2d] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#004822] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#005c2d]"
       >
         <Search className="h-4 w-4" aria-hidden="true" />
         Buscar empresas

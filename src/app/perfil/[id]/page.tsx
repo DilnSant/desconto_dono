@@ -14,7 +14,9 @@ import type { Category, PublicListing, PublicListingWithProfile, PublicProfile, 
 import { cn } from '@/lib/utils/helpers'
 import { normalizeStoredPlanType } from '@/lib/plans/entitlements'
 import { getSignedPublicGallery } from '@/lib/profiles/gallery'
+import { getPublicServiceHours } from '@/lib/profiles/service-hours'
 import { CATEGORIES_STATIC } from '@/lib/constants/categories'
+import type { Json } from '@/types/database'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -48,6 +50,21 @@ function canShowContacts(plan: PlanType) {
   return plan === 'Essencial' || plan === 'Profissional'
 }
 
+function getVisibleServiceSegments(value: Json) {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((segment) => {
+    if (typeof segment !== 'object' || segment === null || Array.isArray(segment)) return []
+    const categoryName = segment.category_name
+    const audiences = segment.service_audiences
+    if (typeof categoryName !== 'string' || !Array.isArray(audiences)) return []
+    const serviceAudiences = audiences.filter(
+      (audience): audience is 'commercial' | 'residential' =>
+        audience === 'commercial' || audience === 'residential',
+    )
+    return serviceAudiences.length > 0 ? [{ categoryName, serviceAudiences }] : []
+  })
+}
+
 export default async function PublicProfilePage({ params }: Props) {
   const { id } = await params
   const supabase = await getServerDb()
@@ -55,7 +72,7 @@ export default async function PublicProfilePage({ params }: Props) {
   const [profileResult, listingsResult] = await Promise.all([
     supabase
       .from('profiles_public')
-      .select('id, full_name, business_name, bio, city, state, avatar_url, category_id, category_name, subcategory_id, subcategory_name, is_verified, plan_type, email_public, public_whatsapp, website_url, instagram_url, tiktok_url, created_at, segment_ids, subcategory_ids, service_area_ibge_codes, service_area_state_codes, service_area_names, national_coverage')
+      .select('id, full_name, business_name, bio, city, state, avatar_url, category_id, category_name, subcategory_id, subcategory_name, is_verified, plan_type, email_public, public_whatsapp, website_url, instagram_url, tiktok_url, created_at, segment_ids, subcategory_ids, service_area_ibge_codes, service_area_state_codes, service_area_names, national_coverage, service_hours, service_segments')
       .eq('id', id)
       .maybeSingle(),
     supabase
@@ -71,6 +88,8 @@ export default async function PublicProfilePage({ params }: Props) {
   if (!profileResult.data) notFound()
 
   const typedProfile = profileResult.data as PublicProfile
+  const visibleServiceSegments = getVisibleServiceSegments(typedProfile.service_segments)
+  const visibleServiceHours = getPublicServiceHours(typedProfile.service_hours)
   const publicListings = (listingsResult.data ?? []) as PublicListing[]
   const categoryIds = Array.from(new Set(publicListings.flatMap((listing) => listing.category_id ? [listing.category_id] : [])))
   const categoriesResult = categoryIds.length
@@ -212,6 +231,24 @@ export default async function PublicProfilePage({ params }: Props) {
             </div>
           )}
 
+          {visibleServiceSegments.length > 0 && (
+            <section className="mb-5" aria-labelledby="profile-service-segments">
+              <h2 id="profile-service-segments" className="mb-2 text-sm font-bold text-gray-800">Tipo de atendimento</h2>
+              <div className="flex flex-wrap gap-2">
+                {visibleServiceSegments.map((segment) => (
+                  <div key={segment.categoryName} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                    <p className="text-sm font-semibold text-gray-800">{segment.categoryName}</p>
+                    <p className="text-xs text-gray-600">
+                      {segment.serviceAudiences.map((audience) =>
+                        audience === 'commercial' ? 'Empresas (comercial)' : 'Residencial',
+                      ).join(' · ')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           {/* Selos */}
           <div className="flex flex-wrap gap-2 mb-4">
             {typedProfile.is_verified && (
@@ -237,6 +274,22 @@ export default async function PublicProfilePage({ params }: Props) {
           {/* Bio */}
           {typedProfile.bio && (
             <p className="text-gray-600 leading-relaxed border-t border-gray-50 pt-4">{typedProfile.bio}</p>
+          )}
+
+          {visibleServiceHours.length > 0 && (
+            <section className="mt-4 border-t border-gray-50 pt-4" aria-labelledby="profile-service-hours">
+              <h2 id="profile-service-hours" className="mb-3 text-sm font-bold text-gray-800">Horário de atendimento</h2>
+              <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                {visibleServiceHours.map((day) => (
+                  <div key={day.key} className="flex justify-between gap-4 rounded-lg bg-gray-50 px-3 py-2">
+                    <dt className="font-medium text-gray-700">{day.label}</dt>
+                    <dd className="text-gray-600">
+                      {day.closed ? 'Fechado' : `${day.open}–${day.close}`}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
           )}
 
           {/* Links sociais — condicionais ao plano */}

@@ -82,6 +82,7 @@ export interface Database {
           subcategory_ids: string[]
           primary_category_id: string | null
           primary_subcategory_id: string | null
+          service_hours: Json
           is_verified: boolean
           is_premium: boolean
           tiktok_url: string | null
@@ -113,6 +114,7 @@ export interface Database {
           subcategory_ids?: string[]
           primary_category_id?: string | null
           primary_subcategory_id?: string | null
+          service_hours?: Json
           tiktok_url?: string | null
           public_whatsapp?: string | null
           created_at?: string
@@ -137,6 +139,7 @@ export interface Database {
           subcategory_ids?: string[]
           primary_category_id?: string | null
           primary_subcategory_id?: string | null
+          service_hours?: Json
           created_at?: string
           updated_at?: string
         }
@@ -242,6 +245,7 @@ export interface Database {
           profile_id: string
           category_id: string
           selection_order: number
+          service_audiences: string[]
           is_active: boolean
           created_at: string
         }
@@ -250,6 +254,7 @@ export interface Database {
           profile_id: string
           category_id: string
           selection_order?: number
+          service_audiences?: string[]
           is_active?: boolean
           created_at?: string
         }
@@ -258,6 +263,7 @@ export interface Database {
           profile_id?: string
           category_id?: string
           selection_order?: number
+          service_audiences?: string[]
           is_active?: boolean
           created_at?: string
         }
@@ -620,6 +626,8 @@ export interface Database {
           service_area_state_codes: string[]
           service_area_names: string[]
           national_coverage: boolean
+          service_hours: Json
+          service_segments: Json
         }
       }
       listings_public: {
@@ -657,6 +665,15 @@ export interface Database {
           p_service_areas: Json
           p_segments: Json
           p_declared_non_presential: boolean
+        }
+        Returns: undefined
+      }
+      save_profile_coverage_with_audiences: {
+        Args: {
+          p_service_areas: Json
+          p_segments: Json
+          p_declared_non_presential: boolean
+          p_service_hours?: Json
         }
         Returns: undefined
       }

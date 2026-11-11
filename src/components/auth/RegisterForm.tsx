@@ -40,12 +40,47 @@ export default function RegisterForm() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [accountCreated, setAccountCreated] = useState(false)
   const [emailConfirmationPending, setEmailConfirmationPending] = useState(false)
+  const [resendingConfirmation, setResendingConfirmation] = useState(false)
+  const [confirmationNotice, setConfirmationNotice] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const { categories, loading: categoriesLoading, error: categoriesError } = useCategoryCatalog()
   const registrationPlan: PlanType = 'Gratuito'
 
   const update = (field: string, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }))
+
+  const rememberSignupEmailForLogin = () => {
+    const signupEmail = form.email.trim().toLowerCase()
+    if (!signupEmail) return
+
+    try {
+      window.sessionStorage.setItem('desconto-dodono:signup-email', signupEmail)
+    } catch {
+      // Email prefill is optional; the user can still enter it manually.
+    }
+  }
+
+  const handleResendConfirmation = async () => {
+    setError('')
+    setConfirmationNotice('')
+    setResendingConfirmation(true)
+    try {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: form.email.trim().toLowerCase(),
+        options: { emailRedirectTo: getAuthCallbackUrl(window.location.origin) },
+      })
+      if (resendError) {
+        setError('Não foi possível solicitar outro link agora. Tente novamente mais tarde.')
+        return
+      }
+      setConfirmationNotice('Solicitação aceita. A entrega depende do serviço de e-mail; confira a caixa de entrada e o spam.')
+    } catch {
+      setError('Não foi possível solicitar outro link agora. Tente novamente mais tarde.')
+    } finally {
+      setResendingConfirmation(false)
+    }
+  }
 
   const nextStep = () => {
     setError('')
@@ -88,6 +123,27 @@ export default function RegisterForm() {
     )
     if (!segmentResult.valid) { setError(segmentResult.errors.join(' ')); setStep(2); return }
 
+    const orderedSegments = [...segments.segments].sort(
+      (first, second) => Number(second.isPrimary) - Number(first.isPrimary),
+    )
+    const serviceAreas = [{
+      ibgeCode: municipality.ibgeCode,
+      name: municipality.name,
+      stateCode: municipality.stateCode,
+      isNational: false,
+      declaredNonPresential: false,
+      selectionOrder: 0,
+    }]
+    const selectedSegments = orderedSegments.map((segment, selectionOrder) => ({
+      categoryId: segment.categoryId,
+      serviceAudiences: segment.serviceAudiences,
+      selectionOrder,
+      subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
+        subcategoryId,
+        selectionOrder: subcategoryOrder,
+      })),
+    }))
+
     setLoading(true)
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -100,6 +156,15 @@ export default function RegisterForm() {
             city: municipality.name,
             state: municipality.stateCode,
             accepted_terms: true,
+            pending_profile_setup: {
+              business_name: form.business_name || null,
+              whatsapp: form.whatsapp || null,
+              website_url: form.website_url || null,
+              instagram_url: form.instagram_url || null,
+              service_areas: serviceAreas,
+              segments: selectedSegments,
+              declared_non_presential: false,
+            },
           },
         },
       })
@@ -108,6 +173,8 @@ export default function RegisterForm() {
         setError(signUpError?.message || 'Erro ao criar conta. Tente novamente.')
         return
       }
+
+      setForm((previous) => ({ ...previous, password: '', confirm_password: '' }))
 
       if (!data.session) {
         setEmailConfirmationPending(true)
@@ -131,24 +198,11 @@ export default function RegisterForm() {
         return
       }
 
-      const { error: coverageError } = await db.rpc('save_profile_coverage', {
-        p_service_areas: [{
-          ibgeCode: municipality.ibgeCode,
-          name: municipality.name,
-          stateCode: municipality.stateCode,
-          isNational: false,
-          declaredNonPresential: false,
-          selectionOrder: 0,
-        }],
-        p_segments: segments.segments.map((segment, selectionOrder) => ({
-          categoryId: segment.categoryId,
-          selectionOrder,
-          subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
-            subcategoryId,
-            selectionOrder: subcategoryOrder,
-          })),
-        })),
+      const { error: coverageError } = await db.rpc('save_profile_coverage_with_audiences', {
+        p_service_areas: serviceAreas,
+        p_segments: selectedSegments,
         p_declared_non_presential: false,
+        p_service_hours: null,
       })
 
       if (coverageError) {
@@ -157,6 +211,21 @@ export default function RegisterForm() {
         setAccountCreated(true)
         return
       }
+
+      const { error: activationError } = await db.from('profiles')
+        .update({ is_active: true })
+        .eq('id', data.user.id)
+      if (activationError) {
+        console.error('[CADASTRO] Falha ao publicar o perfil após concluir o cadastro', activationError)
+        setError('A conta foi criada, mas o perfil não pôde ser publicado. Entre em Meu Perfil e tente salvar novamente.')
+        setAccountCreated(true)
+        return
+      }
+
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: { pending_profile_setup: null },
+      })
+      if (metadataError) console.error('[CADASTRO] Não foi possível limpar os dados temporários do cadastro', metadataError)
 
       router.push('/?cadastro=sucesso')
       router.refresh()
@@ -212,9 +281,24 @@ export default function RegisterForm() {
       {accountCreated && (
         <div role="status" className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
           {emailConfirmationPending ? (
-            <>Conta criada. Confirme o link enviado para {form.email} (verifique também o spam) e depois <Link href="/login" className="font-semibold underline">entre na sua conta</Link>.</>
+            <div className="space-y-3">
+              <p>Conta criada. Confira a caixa de entrada e o spam de {form.email}. Se não recebeu a confirmação, solicite outro link ou entre na sua conta.</p>
+              {confirmationNotice && <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-800">{confirmationNotice}</p>}
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <button
+                  type="button"
+                  onClick={() => void handleResendConfirmation()}
+                  disabled={resendingConfirmation}
+                  className="inline-flex items-center gap-2 font-semibold underline disabled:opacity-60"
+                >
+                  {resendingConfirmation && <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" />}
+                  Reenviar confirmação
+                </button>
+                <Link href="/login" onClick={rememberSignupEmailForLogin} className="font-semibold underline">Entrar na conta</Link>
+              </div>
+            </div>
           ) : (
-            <>Conta criada. Acesse sua conta para concluir o cadastro no perfil. <Link href="/perfil" className="font-semibold underline">Abrir perfil</Link> ou <Link href="/login" className="font-semibold underline">entrar</Link>.</>
+            <>Conta criada. Acesse sua conta para concluir o cadastro no perfil. <Link href="/perfil" className="font-semibold underline">Abrir perfil</Link> ou <Link href="/login" onClick={rememberSignupEmailForLogin} className="font-semibold underline">entrar</Link>.</>
           )}
         </div>
       )}
@@ -402,7 +486,7 @@ export default function RegisterForm() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Já tem conta?{' '}
-        <Link href="/login" className="text-green-700 font-bold hover:underline">
+            <Link href="/login" onClick={rememberSignupEmailForLogin} className="text-green-700 font-bold hover:underline">
           Entrar
         </Link>
       </p>

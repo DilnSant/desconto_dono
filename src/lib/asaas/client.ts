@@ -15,6 +15,16 @@ const BASE_URLS = {
   production: 'https://api.asaas.com/v3',
 } as const
 
+export class AsaasApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly codes: string[],
+  ) {
+    super(`Asaas API error ${status}`)
+    this.name = 'AsaasApiError'
+  }
+}
+
 function getAsaasBaseUrl(): string {
   const env = process.env.ASAAS_ENV === 'production' ? 'production' : 'sandbox'
   return BASE_URLS[env]
@@ -71,7 +81,23 @@ async function asaasFetch<T>(
   })
 
   if (!res.ok) {
-    throw new Error(`Asaas API error ${res.status}`)
+    let payload: unknown
+    try {
+      payload = await res.json()
+    } catch {
+      payload = null
+    }
+    const errors = typeof payload === 'object' && payload !== null && 'errors' in payload
+      ? (payload as { errors?: unknown }).errors
+      : null
+    const codes = Array.isArray(errors)
+      ? [...new Set(errors.flatMap((item) => {
+        if (typeof item !== 'object' || item === null || !('code' in item)) return []
+        const code = (item as { code?: unknown }).code
+        return typeof code === 'string' && /^[A-Za-z0-9_.-]{1,64}$/.test(code) ? [code] : []
+      }))]
+      : []
+    throw new AsaasApiError(res.status, codes)
   }
 
   if (options.method === 'DELETE' || res.status === 204) return undefined as T

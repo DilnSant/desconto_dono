@@ -20,6 +20,10 @@ test('Asaas checkout authenticates the account owner and starts monthly recurrin
   assert.match(checkoutButton, /Cartão de crédito recorrente/)
   assert.doesNotMatch(checkoutButton, /PIX/)
   assert.match(checkoutRoute, /getPlanMonthlyPriceCents\(plan\)/)
+  assert.match(checkoutRoute, /getCheckoutCallbackUrls\([\s\S]*?process\.env\.NEXT_PUBLIC_APP_URL,[\s\S]*?process\.env\.VERCEL_URL/)
+  assert.ok(checkoutRoute.indexOf('getCheckoutCallbackUrls(') < checkoutRoute.indexOf(".from('subscriptions')\n      .insert("))
+  assert.match(asaasClient, /class AsaasApiError/)
+  assert.match(checkoutRoute, /status: err\.status, codes: err\.codes/)
 })
 
 test('Asaas webhook requires its configured token and confirms provider payment state', () => {

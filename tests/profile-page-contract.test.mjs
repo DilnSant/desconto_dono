@@ -2,37 +2,44 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
-const page = readFileSync(new URL('../src/app/perfil/page.tsx', import.meta.url), 'utf8')
+const profilePage = readFileSync(new URL('../src/app/perfil/page.tsx', import.meta.url), 'utf8')
+const registration = readFileSync(new URL('../src/components/auth/RegisterForm.tsx', import.meta.url), 'utf8')
+const callback = readFileSync(new URL('../src/app/auth/callback/route.ts', import.meta.url), 'utf8')
+const editor = readFileSync(new URL('../src/components/profiles/ProfileSegmentsEditor.tsx', import.meta.url), 'utf8')
+const publicProfile = readFileSync(new URL('../src/app/perfil/[id]/page.tsx', import.meta.url), 'utf8')
 
-test('loads the authenticated profile and live category relationships', () => {
-  assert.match(page, /(?:supabase|db)\.from\('profiles'\)/)
-  assert.match(page, /\.eq\('id', user\.id\)/)
-  assert.match(page, /(?:supabase|db)\.from\('categories'\)/)
-  assert.match(page, /(?:supabase|db)\.from\('subcategories'\)/)
-  assert.match(page, /hydrateCategorySelection/)
-  assert.doesNotMatch(page, /CATEGORIES_STATIC/)
+test('offers commercial and residential choices on every segment in registration and profile editing', () => {
+  assert.match(registration, /<ProfileSegmentsEditor/)
+  assert.match(profilePage, /<ProfileSegmentsEditor/)
+  assert.match(editor, /\['commercial', 'Empresas \(comercial\)'\]/)
+  assert.match(editor, /\['residential', 'Residencial'\]/)
+  assert.match(editor, /serviceAudiences: \['commercial', 'residential'\]/)
+  assert.match(editor, /serviceAudiences\.length > 0/)
 })
 
-test('renders multi-select checkboxes and primary category radios', () => {
-  assert.match(page, /type="checkbox"/)
-  assert.match(page, /type="radio"/)
-  assert.match(page, /selectPrimaryCategory/)
-  assert.match(page, /selectPrimarySubcategory/)
+test('persists segment audiences both after immediate signup and email confirmation', () => {
+  assert.match(registration, /db\.rpc\('save_profile_coverage_with_audiences'/)
+  assert.match(registration, /serviceAudiences: segment\.serviceAudiences/)
+  assert.match(callback, /supabase\.rpc\('save_profile_coverage_with_audiences'/)
+  assert.match(callback, /p_segments: segments/)
 })
 
-test('saves selected arrays, primary IDs, and legacy singleton IDs together', () => {
-  assert.match(page, /category_ids:\s*categorySelection\.categoryIds/)
-  assert.match(page, /subcategory_ids:\s*categorySelection\.subcategoryIds/)
-  assert.match(page, /primary_category_id:\s*categorySelection\.primaryCategoryId/)
-  assert.match(page, /primary_subcategory_id:\s*categorySelection\.primarySubcategoryId/)
-  assert.match(page, /category_id:\s*categorySelection\.primaryCategoryId/)
-  assert.match(page, /subcategory_id:\s*categorySelection\.primarySubcategoryId/)
+test('publishes a profile only after its owner completes setup and saves it', () => {
+  assert.match(registration, /update\(\{ is_active: true \}\)/)
+  assert.match(callback, /update\(\{ is_active: true \}\)/)
+  assert.match(profilePage, /is_active: true/)
+  assert.ok(registration.indexOf("db.rpc('save_profile_coverage_with_audiences'") < registration.indexOf('update({ is_active: true })'))
+  assert.ok(callback.indexOf("supabase.rpc('save_profile_coverage_with_audiences'") < callback.indexOf('update({ is_active: true })'))
 })
 
-test('keeps load, upload, and save failures visible instead of showing an empty form', () => {
-  assert.match(page, /role="alert"/)
-  assert.match(page, /if \(!profile\)/)
-  assert.match(page, /Não foi possível carregar/)
-  assert.match(page, /Não foi possível enviar/)
-  assert.match(page, /Não foi possível salvar/)
+test('keeps weekly service hours in Meu Perfil and exposes saved hours on the public profile', () => {
+  assert.match(profilePage, /Horário de Atendimento/)
+  assert.match(profilePage, /SERVICE_HOUR_DAYS\.map/)
+  assert.match(profilePage, /hydrateServiceHours\(profileData\.service_hours\)/)
+  assert.match(profilePage, /serializeServiceHours\(serviceHours\)/)
+  assert.match(profilePage, /validateServiceHours\(serviceHours\)/)
+  assert.match(publicProfile, /getPublicServiceHours\(typedProfile\.service_hours\)/)
+  assert.match(publicProfile, /Horário de atendimento/)
+  assert.doesNotMatch(registration, /Horário de Atendimento|SERVICE_HOUR_DAYS/)
+  assert.match(registration, /p_service_hours: null/)
 })

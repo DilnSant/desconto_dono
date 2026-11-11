@@ -10,11 +10,14 @@ export interface ValidationResult {
   errors: string[]
 }
 
+export type ServiceAudience = 'commercial' | 'residential'
+
 export interface ProfileSegmentSelection {
   segments: Array<{
     categoryId: string
     subcategoryIds: string[]
     isPrimary: boolean
+    serviceAudiences: ServiceAudience[]
   }>
 }
 
@@ -86,6 +89,18 @@ export function validateProfileSegments(
       errors.push('Não é possível cadastrar um segmento duplicado.')
     }
     categoryIds.add(segment.categoryId)
+
+    const selectedAudiences = Array.isArray(segment.serviceAudiences)
+      ? segment.serviceAudiences
+      : ['commercial', 'residential']
+    const serviceAudiences = new Set(selectedAudiences)
+    if (
+      serviceAudiences.size === 0
+      || serviceAudiences.size !== selectedAudiences.length
+      || Array.from(serviceAudiences).some((audience) => audience !== 'commercial' && audience !== 'residential')
+    ) {
+      errors.push('Selecione Comercial, Residencial ou ambos para cada segmento.')
+    }
 
     for (const subcategoryId of segment.subcategoryIds) {
       subcategoryCount += 1

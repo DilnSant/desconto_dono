@@ -57,11 +57,14 @@ export function buildPublicDirectoryFilters(
     ibgeCode && `service_area_ibge_codes.cs.{${ibgeCode}}`,
     stateCode && `service_area_state_codes.cs.{${stateCode}}`,
   ].filter((condition): condition is string => Boolean(condition))
+  const locationOr = ibgeCode
+    ? `${localConditions.length > 1 ? `and(${localConditions.join(',')})` : localConditions[0]},national_coverage.eq.true`
+    : stateCode
+      ? `service_area_state_codes.cs.{${stateCode}},and(state.eq.${stateCode},service_area_state_codes.eq.{}),national_coverage.eq.true`
+      : null
 
   return {
-    locationOr: localConditions.length
-      ? `${localConditions.length > 1 ? `and(${localConditions.join(',')})` : localConditions[0]},national_coverage.eq.true`
-      : null,
+    locationOr,
     categoryId: categoryId ?? null,
   }
 }
@@ -73,9 +76,12 @@ export function matchesPublicDirectoryFilters(
   const normalized = buildPublicDirectoryFilters(filters)
   const ibgeCode = normalizeOptional(filters.ibgeCode)
   const stateCode = normalizeOptional(filters.stateCode)?.toUpperCase()
-  const matchesLocalArea =
-    (!ibgeCode || profile.service_area_ibge_codes.includes(ibgeCode))
-    && (!stateCode || profile.service_area_state_codes.includes(stateCode))
+  const matchesLocalArea = ibgeCode
+    ? profile.service_area_ibge_codes.includes(ibgeCode)
+      && (!stateCode || profile.service_area_state_codes.includes(stateCode))
+    : !stateCode
+      || profile.service_area_state_codes.includes(stateCode)
+      || (profile.service_area_state_codes.length === 0 && profile.state?.toUpperCase() === stateCode)
   const matchesLocation =
     (!ibgeCode && !stateCode)
     || profile.national_coverage

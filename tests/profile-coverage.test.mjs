@@ -130,3 +130,36 @@ test('rejects a subcategory that belongs to a different selected segment', async
   assert.equal(result.valid, false)
   assert.ok(result.errors.some((error) => /pertence/i.test(error)))
 })
+
+test('allows each segment to target commercial, residential, or both audiences', async () => {
+  const { validateProfileSegments } = await loadCoverage()
+  const subcategoryCategoryById = new Map()
+
+  for (const serviceAudiences of [
+    ['commercial'],
+    ['residential'],
+    ['commercial', 'residential'],
+  ]) {
+    const result = validateProfileSegments('Profissional', {
+      segments: [{
+        categoryId: `category-${serviceAudiences.join('-')}`,
+        subcategoryIds: [],
+        isPrimary: true,
+        serviceAudiences,
+      }],
+    }, subcategoryCategoryById)
+    assert.equal(result.valid, true, `${serviceAudiences.join('+')} should be valid`)
+  }
+})
+
+test('requires at least one valid audience for every segment', async () => {
+  const { validateProfileSegments } = await loadCoverage()
+
+  for (const serviceAudiences of [[], ['commercial', 'commercial'], ['other']]) {
+    const result = validateProfileSegments('Gratuito', {
+      segments: [{ categoryId: 'category-a', subcategoryIds: [], isPrimary: true, serviceAudiences }],
+    }, new Map())
+    assert.equal(result.valid, false)
+    assert.ok(result.errors.some((error) => /Comercial, Residencial/i.test(error)))
+  }
+})

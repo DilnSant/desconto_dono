@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import test from 'node:test'
 
 const moduleUrl = new URL('../src/lib/profiles/gallery.ts', import.meta.url)
+const galleryRoute = readFileSync(new URL('../src/app/api/profile/gallery/route.ts', import.meta.url), 'utf8')
+const galleryClient = readFileSync(new URL('../src/components/profile/ProfileGallery.tsx', import.meta.url), 'utf8')
 
 async function loadGallery() {
   assert.ok(existsSync(moduleUrl), 'Profile gallery module must exist')
@@ -60,6 +62,21 @@ function createDependencies(overrides = {}) {
     ...overrides,
   }
 }
+
+test('gallery route returns JSON when handler dependencies fail during initialization', () => {
+  assert.match(galleryRoute, /runGalleryRoute/)
+  assert.match(galleryRoute, /catch \(error\)/)
+  assert.match(galleryRoute, /Response\.json\(/)
+  assert.match(galleryRoute, /headers: \{ 'Cache-Control': 'private, no-store' \}/)
+  assert.match(galleryRoute, /AuthSessionMissingError/)
+})
+
+test('gallery client handles empty or non-JSON server errors without a JSON parse exception', () => {
+  assert.match(galleryClient, /response\.text\(\)/)
+  assert.match(galleryClient, /JSON\.parse\(responseText\)/)
+  assert.match(galleryClient, /response\.status/)
+  assert.doesNotMatch(galleryClient, /response\.json\(\) as ApiResponse/)
+})
 
 test('uses the profile photo limits of zero, three, and ten', async () => {
   const { getGalleryLimit } = await loadGallery()
@@ -227,6 +244,24 @@ test('rejects unauthenticated gallery mutations before storage or quota operatio
 
   assert.equal(response.status, 401)
   assert.equal(reservationAttempts, 0)
+})
+
+test('returns an unauthenticated response when the owner has no active Supabase session', async () => {
+  const { createProfileGalleryHandlers } = await loadGallery()
+  let ownerMediaLookups = 0
+  const handlers = createProfileGalleryHandlers(createDependencies({
+    authenticate: async () => null,
+    getOwnerMedia: async () => {
+      ownerMediaLookups += 1
+      return null
+    },
+  }))
+
+  const response = await handlers.GET()
+  const body = await response.json()
+  assert.equal(response.status, 401)
+  assert.equal(ownerMediaLookups, 0)
+  assert.match(body.error, /Entre na sua conta/)
 })
 
 test('rejects non-image content before reserving a gallery slot', async () => {

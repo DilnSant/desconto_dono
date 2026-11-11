@@ -25,7 +25,7 @@ O cadastro e o login estão disponíveis na página inicial. A lista de espera f
 
 Requer Node.js 20 ou superior. Instale dependências com `npm ci`, copie `.env.local.example` para `.env.local` e informe as credenciais do projeto Supabase. Configure as chaves Asaas de sandbox no servidor para testar assinaturas; nunca use prefixo `NEXT_PUBLIC_` nas chaves privadas.
 
-Em um banco novo, execute `supabase/schema.sql` e depois `supabase/schema_v4.sql`, nessa ordem, no SQL Editor do Supabase. Para atualizar um banco legado, revise e aplique `supabase/schema_v4.sql`; aplique também `supabase/schema_v5.sql` para adicionar as subcategorias de prestação de serviços. A v5 é idempotente e preserva seleções atuais.
+Em um banco novo, execute `supabase/schema.sql` e depois `supabase/schema_v4.sql`, `supabase/schema_v5.sql` e `supabase/schema_v6.sql`, nessa ordem, no SQL Editor do Supabase. Para atualizar um banco legado, revise e aplique `supabase/schema_v4.sql`, `supabase/schema_v5.sql` e `supabase/schema_v6.sql`. As migrations v5 e v6 são idempotentes; a v6 mantém Comercial e Residencial como opções padrão nos segmentos existentes e adiciona horários configuráveis no perfil.
 
 ```bash
 npm run dev

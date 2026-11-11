@@ -51,6 +51,7 @@ export default function ProfileSegmentsEditor({
           categoryId: nextCategory.id,
           subcategoryIds: [],
           isPrimary: value.segments.length === 0,
+          serviceAudiences: ['commercial', 'residential'],
         },
       ],
     })
@@ -133,6 +134,37 @@ export default function ProfileSegmentsEditor({
                 <Trash2 aria-hidden="true" className="h-4 w-4" />
               </button>
             </div>
+
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold text-gray-600">Tipo de atendimento</legend>
+              <div className="flex flex-wrap gap-x-5 gap-y-2">
+                {([
+                  ['commercial', 'Empresas (comercial)'],
+                  ['residential', 'Residencial'],
+                ] as const).map(([audience, label]) => {
+                  const checked = segment.serviceAudiences.includes(audience)
+                  return (
+                    <label key={audience} className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          const serviceAudiences = event.target.checked
+                            ? [...segment.serviceAudiences, audience]
+                            : segment.serviceAudiences.filter((item) => item !== audience)
+                          if (serviceAudiences.length > 0) {
+                            updateSegment(index, () => ({ ...segment, serviceAudiences }))
+                          }
+                        }}
+                        className="h-4 w-4 accent-green-700"
+                      />
+                      {label}
+                    </label>
+                  )
+                })}
+              </div>
+              <p className="text-xs text-gray-500">Você pode selecionar uma opção ou as duas.</p>
+            </fieldset>
 
             {selectedCategory && selectedCategory.subcategories.length > 0 && (
               <div className="grid gap-2 sm:grid-cols-2">
