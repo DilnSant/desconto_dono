@@ -9,10 +9,12 @@ import { normalizeStoredPlanType } from '@/lib/plans/entitlements'
 export const runtime = 'nodejs'
 
 async function createHandlers() {
-  const [server, admin] = await Promise.all([
-    createSupabaseServerClient(),
-    Promise.resolve(createSupabaseAdminClient()),
-  ])
+  const server = await createSupabaseServerClient()
+  let admin: ReturnType<typeof createSupabaseAdminClient> | null = null
+  const getAdmin = () => {
+    admin ??= createSupabaseAdminClient()
+    return admin
+  }
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL não configurada.')
 
@@ -25,6 +27,7 @@ async function createHandlers() {
       return user?.id ?? null
     },
     async getOwnerMedia(profileId) {
+      const admin = getAdmin()
       const [profileResult, imagesResult, planResult] = await Promise.all([
         admin.from('profiles').select('cover_url').eq('id', profileId).maybeSingle(),
         admin
@@ -48,6 +51,7 @@ async function createHandlers() {
       }
     },
     async reserveSlot(profileId, objectPath, displayOrder) {
+      const admin = getAdmin()
       const { data, error } = await admin.rpc('reserve_profile_gallery_slot', {
         p_profile_id: profileId,
         p_object_path: objectPath,
@@ -58,6 +62,7 @@ async function createHandlers() {
       return data
     },
     async uploadObject(path, file) {
+      const admin = getAdmin()
       const { error } = await admin.storage.from('covers').upload(path, file, {
         contentType: file.type,
         upsert: false,
@@ -65,6 +70,7 @@ async function createHandlers() {
       if (error) throw error
     },
     async activateSlot(profileId, imageId) {
+      const admin = getAdmin()
       const { data, error } = await admin
         .from('profile_gallery_images')
         .update({ upload_status: 'ready', is_active: true })
@@ -77,6 +83,7 @@ async function createHandlers() {
       if (!data) throw new Error('A reserva da foto não está mais disponível.')
     },
     async removeReservation(profileId, imageId) {
+      const admin = getAdmin()
       const { error } = await admin
         .from('profile_gallery_images')
         .delete()
@@ -85,6 +92,7 @@ async function createHandlers() {
       if (error) throw error
     },
     async replaceCover(profileId, objectPath) {
+      const admin = getAdmin()
       const { data, error } = await admin.rpc('replace_profile_cover', {
         p_profile_id: profileId,
         p_object_path: objectPath,
@@ -93,6 +101,7 @@ async function createHandlers() {
       return data
     },
     async getOwnerImage(profileId, imageId) {
+      const admin = getAdmin()
       const { data, error } = await admin
         .from('profile_gallery_images')
         .select('id, object_path, display_order, upload_status, is_active')
@@ -103,6 +112,7 @@ async function createHandlers() {
       return data
     },
     async updateImage(profileId, imageId, displayOrder, isActive) {
+      const admin = getAdmin()
       const { error } = await admin.rpc('update_profile_gallery_image', {
         p_profile_id: profileId,
         p_image_id: imageId,
@@ -112,6 +122,7 @@ async function createHandlers() {
       if (error) throw error
     },
     async reorderImages(profileId, imageIds) {
+      const admin = getAdmin()
       const { error } = await admin.rpc('reorder_profile_gallery_images', {
         p_profile_id: profileId,
         p_image_ids: imageIds,
@@ -119,6 +130,7 @@ async function createHandlers() {
       if (error) throw error
     },
     async deleteImage(profileId, imageId) {
+      const admin = getAdmin()
       const { data, error } = await admin
         .from('profile_gallery_images')
         .delete()
@@ -130,10 +142,12 @@ async function createHandlers() {
       if (!data) throw new Error('A foto não pertence a este perfil.')
     },
     async deleteObject(path) {
+      const admin = getAdmin()
       const { error } = await admin.storage.from('covers').remove([path])
       if (error) throw error
     },
     async signObjectPath(path) {
+      const admin = getAdmin()
       const { data, error } = await admin.storage
         .from('covers')
         .createSignedUrl(path, SIGNED_URL_LIFETIME_SECONDS)
@@ -142,6 +156,7 @@ async function createHandlers() {
       return data.signedUrl
     },
     async getPublicProfile(profileId) {
+      const admin = getAdmin()
       const { data, error } = await admin
         .from('profiles_public')
         .select('id, plan_type')
@@ -151,6 +166,7 @@ async function createHandlers() {
       return data ? { plan: normalizeStoredPlanType(data.plan_type) } : null
     },
     async getPublicMedia(profileId) {
+      const admin = getAdmin()
       const [profileResult, imagesResult] = await Promise.all([
         admin.from('profiles').select('cover_url').eq('id', profileId).single(),
         admin
