@@ -39,18 +39,18 @@ export default async function PlanosPage() {
     <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
       <header className="grid gap-8 border-b border-gray-200 pb-10 md:grid-cols-[minmax(0,1.3fr)_minmax(16rem,0.7fr)] md:items-end">
         <div>
-          <p className="mb-3 text-sm font-bold text-green-800">Planos transparentes</p>
+          <p className="mb-3 text-sm font-bold text-green-800">Planos transparentes e sem comissão</p>
           <h1 className="max-w-3xl text-4xl font-black leading-tight text-gray-950 sm:text-5xl">
-            Comece sem pagar. Amplie quando fizer sentido.
+            Comece grátis. Amplie quando seu negócio crescer.
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-gray-600">
-            Crie seu perfil, publique anúncios e converse pelo chat desde o primeiro dia.
-            O cadastro gratuito já funciona em qualquer cidade do Brasil.
+            Crie seu perfil, publique anúncios e conecte-se com clientes desde o primeiro dia.
+            O cadastro gratuito já funciona em todos os 5.571 municípios do Brasil, sem taxas por pedido ou venda.
           </p>
         </div>
         <div className="border-l-4 border-yellow-400 bg-green-50 px-5 py-4 text-sm leading-relaxed text-green-950">
-          No plano gratuito, escolha um município de atuação entre os disponíveis no Brasil.
-          Cada anúncio pode informar sua própria cidade, conforme o local da oferta ou atendimento.
+          <strong>100% da sua receita é sua:</strong> diferente de marketplaces que retêm de 15% a 27% por pedido,
+          aqui o cliente fala direto no seu WhatsApp ou balcão. Você só paga assinatura fixa se desejar mais destaque e ferramentas.
         </div>
       </header>
 

@@ -22,28 +22,28 @@ const PRINCIPLES = [
 // FAQ com as respostas oficiais
 const FAQ_ITEMS = [
   {
-    q: 'É pago?',
-    a: 'Criar uma conta e usar os recursos gratuitos não tem custo. Qualquer plano pago deve apresentar suas condições antes da contratação.',
+    q: 'É pago para cadastrar?',
+    a: 'Não. O cadastro inicial é 100% gratuito, sem exigir cartão de crédito. Você cria seu perfil profissional, seleciona sua cidade de atuação e já pode publicar suas ofertas.',
   },
   {
-    q: 'Posso usar a plataforma em qualquer cidade?',
-    a: 'Sim. O cadastro é imediato para qualquer município; no plano gratuito, você escolhe uma cidade de atuação.',
+    q: 'Vocês cobram comissão sobre as vendas ou pedidos?',
+    a: 'Nunca. Cobrança de 15% a 27% por pedido fica para outros aplicativos. No Desconto do Dono, o cliente fala diretamente com você via WhatsApp, telefone ou balcão, e 100% do valor da venda é seu.',
   },
   {
-    q: 'Preciso ter empresa?',
-    a: 'Não. Autônomos, profissionais liberais e quem está começando também são bem-vindos.',
+    q: 'Como funciona o vídeo do dono?',
+    a: 'Você ou sua equipe gravam um vídeo curto de até 30 segundos apresentando o negócio, os diferenciais e convidando o cliente. É a humanização que gera conexão imediata e confiança.',
   },
   {
-    q: 'O que vocês fazem com os meus dados?',
-    a: 'Usamos seus dados para criar e administrar sua conta e oferecer os recursos da plataforma. Consulte nossa Política de Privacidade para conhecer os detalhes.',
+    q: 'Posso usar a plataforma em qualquer cidade do Brasil?',
+    a: 'Sim. Nosso catálogo é integrado com os 5.571 municípios oficiais do IBGE. Você pode atuar na sua cidade ou expandir sua área de cobertura.',
   },
   {
-    q: 'Vocês perguntam minha posição política?',
-    a: 'Não, e nunca vamos perguntar. A identidade da comunidade está na Carta de Princípios: quem se identifica com ela, entra.',
+    q: 'Preciso ter CNPJ para participar?',
+    a: 'Não é obrigatório. Autônomos, profissionais liberais, prestadores de serviços e comerciantes de qualquer porte são bem-vindos.',
   },
   {
-    q: 'Tenho uma empresa e quero oferecer benefícios.',
-    a: 'Crie sua conta gratuita e cadastre seu perfil. Você poderá publicar benefícios para a comunidade.',
+    q: 'O que é o Selo de Empresa Verificada?',
+    a: 'É uma chancela de segurança concedida às empresas após a validação cadastral pela nossa equipe, transmitindo autoridade máxima aos consumidores da plataforma.',
   },
 ]
 
@@ -79,24 +79,23 @@ export default function LandingPage() {
             <div className="lg:col-span-7">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-400/15 border border-yellow-400/40 text-yellow-300 text-sm font-semibold mb-6 shadow-sm">
                 <Zap className="w-4 h-4 text-yellow-400" />
-                🇧🇷 A comunidade dos empresários que movem o Brasil
+                🇧🇷 Vitrine direta com vídeo do dono em 5.571 municípios
               </div>
 
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-white leading-tight mb-6">
-                Descontos de{' '}
-                <span style={{ color: '#FEDF00' }}>Verdade</span>{' '}
-                para Quem Move o País
+                Clientes Locais e Conexões Reais{' '}
+                <span style={{ color: '#FEDF00' }}>Sem Pagar Comissão</span>
               </h1>
 
               <p className="text-gray-200 text-lg md:text-xl leading-relaxed mb-8 font-normal">
-                A ponte que conecta os melhores empreendedores do Brasil. O lugar certo para gerar conexões, contatos e contratos altamente confiáveis com quem move o nosso país.
+                Apresente seu negócio com vídeo do próprio dono, seja encontrado por cidade e segmento pelo IBGE e receba contatos diretos no seu WhatsApp — sem intermediários e sem taxas predatórias por venda.
               </p>
 
               <div className="flex flex-wrap gap-4 mb-8">
                 {[
-                  { Icon: Users, text: 'Conta gratuita' },
-                  { Icon: MapPin, text: 'Conexões por cidade e segmento' },
-                  { Icon: MessageCircle, text: 'Chat dentro da plataforma' },
+                  { Icon: Users, text: 'Cadastro gratuito para começar' },
+                  { Icon: MapPin, text: '5.571 municípios oficiais (IBGE)' },
+                  { Icon: MessageCircle, text: 'Contato direto via WhatsApp e chat' },
                 ].map(({ Icon, text }) => (
                   <div key={text} className="flex items-center gap-2 text-gray-300 text-sm font-medium">
                     <Icon className="w-4 h-4 text-yellow-400" /> {text}
@@ -129,22 +128,22 @@ export default function LandingPage() {
 
             <div className="lg:col-span-5">
               <div className="rounded-3xl border border-yellow-400/30 bg-slate-800/80 p-6 md:p-8 shadow-2xl">
-                <p className="text-yellow-300 font-bold mb-3">Sua cidade. Seu segmento. Sua rede.</p>
+                <p className="text-yellow-300 font-bold mb-3">Método Vitrine do Dono</p>
                 <h2 className="text-2xl md:text-3xl font-black text-white leading-tight mb-6">
-                  Seja um dos primeiros a criar conexões por aqui.
+                  Por que donos de negócios escolhem o Desconto do Dono:
                 </h2>
                 <ul className="space-y-4 text-gray-200">
                   <li className="flex items-start gap-3">
                     <Users className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                    <span>Monte seu perfil profissional sem custo.</span>
+                    <span><strong>Vídeo do Dono:</strong> o cliente conhece quem está por trás antes de ir até você.</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <MapPin className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                    <span>Encontre negócios por cidade e área de atuação.</span>
+                    <span><strong>Busca Hiperlocal:</strong> catálogo municipal oficial do IBGE para a sua região.</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <MessageCircle className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
-                    <span>Comece uma conversa pelo chat da plataforma.</span>
+                    <span><strong>100% da sua Venda:</strong> contato direto no seu WhatsApp ou balcão, zero comissões.</span>
                   </li>
                 </ul>
               </div>
@@ -156,32 +155,41 @@ export default function LandingPage() {
       {/* Faixa Brasil */}
       <div className="h-2" style={{ background: 'linear-gradient(90deg, #009B3A 33%, #FEDF00 33%, #FEDF00 66%, #002776 66%)' }} />
 
-      {/* ===== COMO FUNCIONA ===== */}
+      {/* ===== COMO FUNCIONA (MÉTODO VITRINE DO DONO) ===== */}
       <section className="py-16 px-4 bg-gray-50">
         <div className="max-w-5xl mx-auto text-center mb-12">
-          <h2 className="text-3xl font-black text-gray-900 mb-3">Como Funciona</h2>
-          <p className="text-gray-500 text-lg">Três passos para fazer parte da comunidade</p>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-green-800 bg-green-100 text-sm font-semibold mb-3">
+            Passo a passo comprovado
+          </div>
+          <h2 className="text-3xl font-black text-gray-900 mb-3">Como Funciona o Método Vitrine do Dono</h2>
+          <p className="text-gray-500 text-lg">Do cadastro à primeira conexão com clientes da sua cidade</p>
         </div>
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
           {[
             {
-              step: '01', icon: '📝', title: 'Crie seu perfil gratuito',
-              desc: 'Informe sua cidade e área de atuação para apresentar seu negócio.',
+              step: '01', icon: '📝', title: 'Crie seu perfil grátis',
+              desc: 'Cadastre sua empresa, cidade de atuação e segmentos atendidos em minutos.',
             },
             {
-              step: '02', icon: '🔎', title: 'Explore a rede',
-              desc: 'Encontre empresas, profissionais e oportunidades na plataforma.',
+              step: '02', icon: '🎬', title: 'Grave o vídeo do dono',
+              desc: 'Um vídeo autêntico de 30 segundos contando quem você é e sua oferta real.',
             },
             {
-              step: '03', icon: '💬', title: 'Inicie uma conversa',
-              desc: 'Use o chat para começar a criar novas conexões profissionais.',
+              step: '03', icon: '📍', title: 'Apareça na sua cidade',
+              desc: 'Indexação no catálogo municipal do IBGE para quem procura serviços locais.',
+            },
+            {
+              step: '04', icon: '📲', title: 'Feche direto no WhatsApp',
+              desc: 'Receba clientes sem intermediários, sem taxas e sem comissões sobre suas vendas.',
             },
           ].map((step) => (
-            <div key={step.step} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden">
-              <span className="absolute top-4 right-4 text-6xl font-black text-gray-50">{step.step}</span>
-              <span className="text-4xl mb-4 block">{step.icon}</span>
-              <h3 className="text-lg font-black text-gray-900 mb-2">{step.title}</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">{step.desc}</p>
+            <div key={step.step} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden flex flex-col justify-between">
+              <div>
+                <span className="absolute top-4 right-4 text-5xl font-black text-gray-100">{step.step}</span>
+                <span className="text-4xl mb-4 block">{step.icon}</span>
+                <h3 className="text-lg font-black text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{step.desc}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -191,9 +199,9 @@ export default function LandingPage() {
       <section id="comecar" className="py-16 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-10">
-            <h2 className="text-3xl font-black text-gray-900 mb-3">Sua próxima conexão pode começar hoje</h2>
+            <h2 className="text-3xl font-black text-gray-900 mb-3">Sua empresa visível para quem procura hoje</h2>
             <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-              Crie sua conta gratuita, encontre empreendedores da sua região e comece uma conversa hoje.
+              Crie seu cadastro sem compromisso, publique seus anúncios com benefício real e conecte-se com clientes que valorizam o comércio local.
             </p>
           </div>
 
@@ -203,13 +211,13 @@ export default function LandingPage() {
               className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-black text-green-950 transition-all hover:brightness-110 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
               style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
             >
-              Criar conta grátis <ArrowRight className="w-5 h-5" />
+              Criar conta grátis agora <ArrowRight className="w-5 h-5" />
             </Link>
             <Link
               href="/categorias"
               className="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-bold text-green-800 border border-green-200 hover:bg-green-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
             >
-              Explorar empresas
+              Explorar empresas cadastradas
             </Link>
             </div>
         </div>
@@ -255,18 +263,21 @@ export default function LandingPage() {
 
       <section className="py-16 px-4 bg-white">
         <div className="max-w-4xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-yellow-800 bg-yellow-100 text-sm font-semibold mb-4">
+            Zero Risco · Sem Cartão de Crédito
+          </div>
           <h2 className="text-3xl font-black text-gray-900 mb-3">
-            Tem um negócio para apresentar?
+            Pare de perder clientes para quem gasta fortunas em anúncio
           </h2>
           <p className="text-gray-600 text-lg max-w-2xl mx-auto mb-7">
-            Crie seu perfil, publique seus serviços e conheça profissionais que também estão construindo negócios.
+            No Desconto do Dono, a força da sua empresa é a sua verdade e reputação. Cadastre seu ponto comercial ou serviço autônomo e comece a ser descoberto na sua cidade.
           </p>
           <Link
             href="/cadastro"
             className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl font-black text-green-950 transition-all hover:brightness-110 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-700"
             style={{ background: 'linear-gradient(135deg, #FEDF00, #FFB800)' }}
           >
-            Começar gratuitamente <ArrowRight className="w-5 h-5" />
+            Começar Gratuitamente <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       </section>

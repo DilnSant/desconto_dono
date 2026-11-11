@@ -9,12 +9,12 @@ import { redirect } from 'next/navigation'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Desconto do Dono — Conexões e negócios locais',
+  title: 'Desconto do Dono — Vitrine com Vídeo do Dono e Negócios Locais',
   description:
-    'Crie seu perfil gratuito, encontre empresas e empreendedores por cidade e categoria e inicie conversas pelo chat. Cadastre-se no Desconto do Dono.',
+    'Conecte seu negócio diretamente a clientes da sua cidade. Vídeo do dono, catálogo em 5.571 municípios (IBGE) e contato direto via WhatsApp sem comissão.',
   openGraph: {
-    title: 'Desconto do Dono — Clube de Descontos e Diretório de Empresas',
-    description: 'Encontre negócios locais, conheça empreendedores e inicie conversas pelo chat da plataforma.',
+    title: 'Desconto do Dono — Vitrine com Vídeo do Dono e Negócios Locais',
+    description: 'Encontre negócios locais, conheça o dono por vídeo e feche negócios diretamente pelo WhatsApp sem intermediários.',
     type: 'website',
   },
 }

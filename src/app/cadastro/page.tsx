@@ -10,8 +10,8 @@ import RegisterForm from '@/components/auth/RegisterForm'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Cadastro — Desconto do Dono',
-  description: 'Crie sua conta grátis e conecte seu negócio local a consumidores através de ofertas exclusivas.',
+  title: 'Cadastro Gratuito — Desconto do Dono',
+  description: 'Crie seu perfil grátis, publique ofertas locais com vídeo do dono e receba clientes no WhatsApp sem comissão.',
 }
 
 
@@ -40,20 +40,21 @@ export default async function CadastroPage() {
             className="w-40 h-auto mx-auto mb-6 object-contain"
           />
           <h2 className="text-4xl font-black text-white mb-4 leading-tight">
-            Faça parte de<br />
-            <span style={{ color: '#FEDF00' }}>novas conexões</span>
+            Sua Empresa Direto<br />
+            ao Cliente, <span style={{ color: '#FEDF00' }}>Sem Comissão</span>
           </h2>
-          <p className="text-white/70 text-base leading-relaxed mb-8">
-            Cadastre-se gratuitamente, apresente seu negócio e converse com empreendedores de qualquer cidade.
+          <p className="text-white/80 text-base leading-relaxed mb-8">
+            Cadastre-se gratuitamente em 5.571 municípios, publique suas ofertas com vídeo do dono e receba clientes no WhatsApp.
           </p>
           <div className="space-y-3 text-left">
             {[
-              '✅ Perfil profissional gratuito',
-              '✅ Chat para iniciar conversas',
-              '✅ Explore negócios por cidade e categoria',
-              '✅ Escolha qualquer município do Brasil para seu perfil',
+              '✅ Perfil profissional 100% gratuito',
+              '✅ Sem taxa por pedido: 100% da venda é sua',
+              '✅ Busca por cidade oficial do IBGE e segmento',
+              '✅ Contato direto via WhatsApp e chat interno',
+              '✅ Sem necessidade de cartão de crédito',
             ].map((item) => (
-              <p key={item} className="text-white/80 text-sm flex items-start gap-2">{item}</p>
+              <p key={item} className="text-white/90 text-sm flex items-start gap-2">{item}</p>
             ))}
           </div>
         </div>
