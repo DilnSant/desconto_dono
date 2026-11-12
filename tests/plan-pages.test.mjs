@@ -14,7 +14,7 @@ test('public plan page uses the shared monthly prices and current entitlements',
   assert.equal(typeof getPlanMonthlyPriceCents, 'function')
   assert.deepEqual(
     ['Gratuito', 'Essencial', 'Profissional'].map((plan) => getPlanMonthlyPriceCents(plan)),
-    [0, 3990, 5990],
+    [0, 3990, 6990],
   )
   assert.deepEqual(getPlanEntitlements('Gratuito'), {
     maxNewActiveListings: 1,

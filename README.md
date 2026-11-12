@@ -8,7 +8,7 @@ Plataforma para empreendedores encontrarem empresas, publicarem anúncios e bene
 |---|---:|---:|---:|---:|---:|
 | Gratuito | R$ 0 | 1 | 1 | 1 / 3 | 0 |
 | Essencial | R$ 39,90 | 3 | 3 ou atuação nacional não presencial | 2 / 6 | 3 |
-| Profissional | R$ 59,90 | 5 | 5 ou atuação nacional não presencial | 3 / 10 | 10 |
+| Profissional | R$ 69,90 | 5 | 5 ou atuação nacional não presencial | 3 / 10 | 10 |
 
 Os preços e limites têm uma única fonte em `src/lib/plans/entitlements.ts` e são apresentados em `/planos`. A página oferece checkout mensal hospedado pelo Asaas para cobrança recorrente no cartão de crédito. A assinatura só altera o plano após confirmação autenticada do Asaas; o retorno do navegador não concede benefícios. Não existe plano Premium, cobrança anual, benefício de vídeo ou selo de verificação vendido por plano.
 

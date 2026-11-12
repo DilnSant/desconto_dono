@@ -18,8 +18,8 @@ test('footer places the complete institutional text beside its logo', () => {
   const footer = source('../src/components/layout/Footer.tsx')
   const normalizedFooter = footer.replace(/\s+/g, ' ')
 
-  assert.ok(footer.includes('xl:flex-row xl:items-stretch'))
-  assert.ok(footer.includes('xl:h-full'))
+  assert.ok(footer.includes('xl:flex-row xl:items-center'))
+  assert.ok(footer.includes('h-16'))
   assert.ok(footer.includes('xl:grid-cols-[1.65fr_1fr_1fr]'))
   assert.ok(
     normalizedFooter.includes(

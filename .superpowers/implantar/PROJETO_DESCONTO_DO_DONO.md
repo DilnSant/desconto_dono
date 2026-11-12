@@ -37,7 +37,7 @@ A missão é dar voz e protagonismo ao empresário brasileiro, valorizando quem 
 - **Transparência Absoluta:** O usuário sempre sabe com quem está falando, onde fica o estabelecimento e quais são as condições exatas da oferta.
 
 ### 3.2 Estrutura da Interface e Componentes Principais
-- **Header e Identidade Global:** Logomarca oficial circular e transparente (`logo.DDD2.jpeg`), navegação rápida entre Diretório de Empresas, Benefícios, Planos, Anúncios e Área do Membro.
+- **Header e Identidade Global:** Logomarca oficial transparente (`LogoTransp..png`), navegação rápida entre Diretório de Empresas, Benefícios, Planos, Anúncios e Área do Membro. O arquivo `logo.DDD2.jpeg` existe no repositório como alternativa, mas **a versão em uso em produção é `LogoTransp..png`**.
 - **Seção "Conheça quem já faz parte" (Empresas Participantes):**
   - **Título:** *Conheça quem já faz parte — Empresas que acreditam em conexões reais com seus clientes.*
   - **Cards de Empresas:** Apresentação em grid responsivo (3 colunas no desktop, lista empilhada no mobile), exibindo logotipo, razão/nome fantasia, município/UF, segmentos de atuação e botão com link direto de contato com o proprietário.
@@ -58,25 +58,27 @@ A missão é dar voz e protagonismo ao empresário brasileiro, valorizando quem 
 
 ## 4. Estrutura de Planos e Modelo de Negócios
 
-O modelo de monetização do Desconto do Dono é baseado em **assinatura recorrente (SaaS/Clube)** com cobrança automatizada via Asaas (cartão de crédito ou Pix recorrente), complementado por um nível gratuito de entrada para facilitar a adesão rápida de novos empreendedores.
+O modelo de monetização do Desconto do Dono é baseado em **assinatura mensal recorrente (SaaS/Clube)** com cobrança automatizada via Asaas (cartão de crédito), complementado por um nível gratuito de entrada para facilitar a adesão rápida de novos empreendedores.
+
+> **Nota de decisão técnica (nov/2026):** A plataforma opera com **3 planos** (Gratuito, Essencial e Profissional). O plano Premium foi descontinuado antes do lançamento. Não existe cobrança anual — apenas mensalidade recorrente. Cada plano pode ser cancelado a qualquer momento pelo painel de assinatura. A fonte única de verdade dos limites e preços é `src/lib/plans/entitlements.ts`.
 
 ### 4.1 Níveis de Planos
 
-| Recursos | Gratuito | Essencial | Profissional | Premium |
-|---|:---:|:---:|:---:|:---:|
-| **Mensalidade** | R$ 0 | R$ 39,90 / mês | R$ 69,90 / mês | R$ 99,90 / mês |
-| **Opção Anual** | — | R$ 358,80 / ano | R$ 598,80 / ano | R$ 958,80 / ano |
-| **Anúncios Ativos** | 1 anúncio | Até 3 anúncios | Até 5 anúncios | Ilimitados / Destaque |
-| **Canais de Contato** | Internos | WhatsApp, Endereço, Fone | Redes sociais e Site inclusos | Todos os canais + WhatsApp 24h |
-| **Galeria de Fotos** | Não | Básica (3 fotos) | Expandida (10 fotos) | Completa (alta resolução) |
-| **Destaque na Plataforma** | Padrão | Categoria | Destaque na Categoria | Destaque na Home + Topo |
-| **Selo de Verificação** | Não | Não | Selo de Membro | **Selo Empresa Verificada** |
-| **Relatórios e Analytics** | Não | Não | Relatório mensal simples | Analytics completo (views, cliques, tempo) |
-| **Suporte** | Central de Ajuda | Suporte por E-mail | WhatsApp Prioritário | WhatsApp Dedicado 24h |
+| Recursos | Gratuito | Essencial | Profissional |
+|---|:---:|:---:|:---:|
+| **Mensalidade** | R$ 0 | R$ 39,90 / mês | R$ 69,90 / mês |
+| **Anúncios Ativos** | 1 anúncio | Até 3 anúncios | Até 5 anúncios |
+| **Municípios de atuação** | 1 | Até 3 ou nacional (não presencial) | Até 5 ou nacional (não presencial) |
+| **Segmentos / Subcategorias** | 1 / até 3 | 2 / até 6 | 3 / até 10 |
+| **Galeria de Fotos adicionais** | Não | Básica (3 fotos) | Expandida (10 fotos) |
+| **Contatos públicos (WhatsApp / E-mail)** | Não | Sim | Sim |
+| **Selo de Empresa Verificada** | Não | Não | Não (concedido pela equipe, independe do plano) |
+| **Relatórios e Analytics** | Não | Não | Roadmap futuro |
+| **Suporte** | Central de Ajuda | E-mail | E-mail / WhatsApp prioritário (roadmap) |
 
-### 4.2 Recursos Avançados em Implementação Contínua
+### 4.2 Recursos Avançados em Implementação Contínua (Roadmap)
 - **Relatórios Mensais em PDF:** Exportação de métricas do perfil do empresário contendo número de visualizações, contatos via WhatsApp gerados e conversão de cupons.
-- **Badge Visual "Empresa Verificada":** Destaque gráfico exclusivo para membros que validam formalmente seus dados cadastrais (CNPJ, endereço físico e contrato social).
+- **Badge Visual "Empresa Verificada":** Destaque gráfico exclusivo concedido pela equipe após validação cadastral (CNPJ, endereço físico e contrato social). **Não é vendido por plano.**
 
 ---
 

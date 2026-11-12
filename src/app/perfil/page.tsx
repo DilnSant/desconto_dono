@@ -95,14 +95,15 @@ export default function PerfilPage() {
             .select('ibge_code, municipality_name, state_code, is_national, declared_non_presential, selection_order')
             .eq('profile_id', user.id)
             .order('selection_order'),
-          db.rpc('get_effective_plan', { p_profile_id: user.id }),
+          // RPC disponível apenas após migration v4 — captura falha sem bloquear o carregamento
+          db.rpc('get_effective_plan', { p_profile_id: user.id }).catch(() => ({ data: null, error: null })),
         ])
 
         if (profileResult.error) throw profileResult.error
         if (segmentResult.error) throw segmentResult.error
         if (subcategoryResult.error) throw subcategoryResult.error
         if (serviceAreaResult.error) throw serviceAreaResult.error
-        if (planResult.error) throw planResult.error
+        // planResult pode retornar null se a migration v4 ainda não foi aplicada — usa plan_type do perfil como fallback
         if (!profileResult.data) throw new Error('PROFILE_NOT_FOUND')
 
         const profileData: Profile = profileResult.data

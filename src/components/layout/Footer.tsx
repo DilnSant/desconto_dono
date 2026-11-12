@@ -15,14 +15,14 @@ export default function Footer() {
         <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3 lg:gap-16 xl:grid-cols-[1.65fr_1fr_1fr]">
           {/* Coluna 1 — Sobre */}
           <div className="space-y-4">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch xl:gap-6">
-              <Link href="/" className="group inline-flex h-12 shrink-0 items-center gap-2.5 xl:flex xl:h-auto xl:self-stretch xl:items-stretch">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:gap-6">
+              <Link href="/" className="group inline-flex shrink-0 items-center gap-2.5">
                 <Image
                   src="/images/LogoTransp..png"
                   alt="Desconto do Dono"
                   width={1024}
                   height={572}
-                  className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-105 xl:block xl:h-full xl:w-auto xl:max-w-none"
+                  className="h-16 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
                 />
               </Link>
 
@@ -120,7 +120,7 @@ export default function Footer() {
                 alt="Método Develops"
                 width={1535}
                 height={1024}
-                className="h-12 w-auto object-contain transition-transform duration-300 hover:scale-[1.6] cursor-pointer"
+                className="h-8 w-auto object-contain transition-transform duration-300 hover:scale-110 cursor-pointer"
               />
             </a>
           </p>

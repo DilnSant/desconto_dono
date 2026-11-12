@@ -43,7 +43,7 @@ const PLAN_ENTITLEMENTS: Readonly<Record<PlanType, PlanEntitlements>> = Object.f
 const PLAN_MONTHLY_PRICE_CENTS: Readonly<Record<PlanType, number>> = Object.freeze({
   Gratuito: 0,
   Essencial: 3990,
-  Profissional: 5990,
+  Profissional: 6990,
 })
 
 export function getPlanEntitlements(plan: PlanType): PlanEntitlements {
