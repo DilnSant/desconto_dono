@@ -97,12 +97,18 @@ Revisado em 08/11/2026. Base da revisão: HEAD `1f5ac6e` (`fix: valida selecao d
 - [x] Reconciliado `src/components/auth/RegisterForm.tsx`: restaurada a persistência de segmentos com audiências (`save_profile_coverage_with_audiences`), ativação do perfil após cadastro imediato, inicialização com `p_service_hours: null` e metadados de cadastro para confirmação por e-mail, preservando a navegação em memória com credenciais para login.
 - [x] Ajustado texto em `src/app/planos/page.tsx` para respeitar o contrato de termos sem promessas não suportadas (substituído termo que feria o contrato de ausência de destaques pagos).
 - [x] Versionado `.gitignore` com permissão explícita para `.env.example` e `.vscode/settings.json`.
+- [x] Redução e ajuste de proporção no rodapé: logo Desconto do Dono compactada para `h-16 w-auto` (sem esticamento vertical) e logo Método Develops compactada para `h-8`.
+- [x] Correção de `TypeError: f.f.rpc(...).catch is not a function` na tela `/perfil`: envelopamento em função assíncrona com `try/catch` para respeitar Thenables do PostgREST.
+- [x] Resiliência a schemas legados v4/v5 no Supabase remoto: consulta com `select('*')` em `profile_categories` para evitar HTTP 400 (`service_audiences does not exist`), e fallback gracioso de `save_profile_coverage_with_audiences` para `save_profile_coverage`.
+- [x] Criação do bucket `listings` no Supabase Storage via admin SDK e implementação da rota servidora segura `POST /api/upload` (com validação de sessão, tipo MIME e limite de 5MB) para eliminar erros 403 de RLS ao enviar avatares e imagens de anúncios.
+- [x] Resiliência da Galeria de Fotos (`/api/profile/gallery` e `src/lib/profiles/gallery.ts`): tratamento defensivo para objetos ausentes no Storage e planos padrão sem travar a tela com status 500.
+- [x] Horários de atendimento: inclusão da opção "Aberto 24hs" (campo `allDay`), suporte completo na hidratação, validação, exibição pública em `/perfil/[id]` e redução da altura das linhas da tabela de horários em >30%.
+- [x] Alinhamento do preço do plano Profissional para R$ 69,90 no código e documentações.
 - [x] Verificações locais aprovadas:
   - `npx tsc --noEmit`: 0 erros de tipagem.
   - `npm run lint`: 0 erros e 0 avisos.
-  - `npm run build -- --webpack`: compilação e geração de 24 rotas estáticas e dinâmicas concluída com sucesso.
-  - Suíte de testes: **141/141 testes passaram** (100% de aprovação), englobando testes unitários, contratos estáticos e testes HTTP contra o servidor de produção local.
-- [x] Git sincronizado e preparado para push em `origin/main`.
+  - Testes unitários de perfis, planos, galeria e horários de atendimento: 27/27 aprovados (100%).
+- [x] Todos os commits pendentes sincronizados e enviados para `origin/main`.
 
 ## Referências
 
