@@ -189,12 +189,26 @@ export default function RegisterForm() {
         return
       }
 
-      const { error: coverageError } = await db.rpc('save_profile_coverage_with_audiences', {
+      let { error: coverageError } = await db.rpc('save_profile_coverage_with_audiences', {
         p_service_areas: serviceAreas,
         p_segments: selectedSegments,
         p_declared_non_presential: false,
         p_service_hours: null,
       })
+
+      // Se a RPC da v6 ainda não existe no banco, executa fallback para a v4/v5 existente
+      if (coverageError && (coverageError.code === '42883' || coverageError.code === 'PGRST202' || coverageError.message?.includes('save_profile_coverage_with_audiences'))) {
+        const fallbackSegments = selectedSegments.map((segment: { categoryId: string; subcategories: unknown }) => ({
+          categoryId: segment.categoryId,
+          subcategories: segment.subcategories,
+        }))
+        const fallbackRes = await db.rpc('save_profile_coverage', {
+          p_service_areas: serviceAreas,
+          p_segments: fallbackSegments,
+          p_declared_non_presential: false,
+        })
+        coverageError = fallbackRes.error
+      }
 
       if (coverageError) {
         console.error('[CADASTRO] Falha ao salvar cobertura e segmentos', coverageError)

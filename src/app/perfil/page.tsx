@@ -82,12 +82,23 @@ export default function PerfilPage() {
         if (authError) throw authError
         if (!user) { router.replace('/login'); return }
 
-        const [profileResult, segmentResult, subcategoryResult, serviceAreaResult, planResult] = await Promise.all([
-          db.from('profiles').select('*').eq('id', user.id).single(),
-          db.from('profile_categories')
+        const fetchSegments = async () => {
+          const res = await db.from('profile_categories')
             .select('id, category_id, selection_order, service_audiences')
             .eq('profile_id', user.id)
-            .order('selection_order'),
+            .order('selection_order')
+          if (res.error && (res.error.code === '42703' || res.error.message?.includes('service_audiences'))) {
+            return db.from('profile_categories')
+              .select('id, category_id, selection_order')
+              .eq('profile_id', user.id)
+              .order('selection_order')
+          }
+          return res
+        }
+
+        const [profileResult, segmentResult, subcategoryResult, serviceAreaResult, planResult] = await Promise.all([
+          db.from('profiles').select('*').eq('id', user.id).maybeSingle(),
+          fetchSegments(),
           db.from('profile_subcategories')
             .select('profile_category_id, subcategory_id, selection_order')
             .order('selection_order'),
@@ -95,7 +106,7 @@ export default function PerfilPage() {
             .select('ibge_code, municipality_name, state_code, is_national, declared_non_presential, selection_order')
             .eq('profile_id', user.id)
             .order('selection_order'),
-          // RPC disponível apenas após migration v4 — captura falha sem bloquear o carregamento
+          // RPC disponível após migration — captura falha sem bloquear o carregamento
           db.rpc('get_effective_plan', { p_profile_id: user.id }).catch(() => ({ data: null, error: null })),
         ])
 
@@ -103,10 +114,26 @@ export default function PerfilPage() {
         if (segmentResult.error) throw segmentResult.error
         if (subcategoryResult.error) throw subcategoryResult.error
         if (serviceAreaResult.error) throw serviceAreaResult.error
-        // planResult pode retornar null se a migration v4 ainda não foi aplicada — usa plan_type do perfil como fallback
-        if (!profileResult.data) throw new Error('PROFILE_NOT_FOUND')
 
-        const profileData: Profile = profileResult.data
+        let profileData: Profile = profileResult.data
+        if (!profileData) {
+          const initialProfile = {
+            id: user.id,
+            full_name: (user.user_metadata?.full_name as string) || user.email?.split('@')[0] || 'Usuário',
+            email: user.email || null,
+            city: (user.user_metadata?.city as string) || '',
+            state: (user.user_metadata?.state as string) || '',
+            plan_type: 'Gratuito',
+            is_active: false,
+            accepted_terms: true,
+          }
+          const { data: created, error: createError } = await db.from('profiles').insert(initialProfile).select().single()
+          if (!createError && created) {
+            profileData = created as Profile
+          } else {
+            throw new Error('PROFILE_NOT_FOUND')
+          }
+        }
         const savedSubcategories = subcategoryResult.data ?? []
         const savedSegments = (segmentResult.data ?? []).map((segment: {
           id: string
@@ -224,7 +251,7 @@ export default function PerfilPage() {
       const orderedSegments = [...profileSegments.segments].sort(
         (first, second) => Number(second.isPrimary) - Number(first.isPrimary),
       )
-      const { error: coverageError } = await db.rpc('save_profile_coverage_with_audiences', {
+      let { error: coverageError } = await db.rpc('save_profile_coverage_with_audiences', {
         p_service_areas: serviceAreas.map((area) => ({
           ibgeCode: area.ibge_code,
           name: area.municipality_name,
@@ -245,6 +272,30 @@ export default function PerfilPage() {
         p_declared_non_presential: serviceAreas.some((area) => area.is_national && area.declared_non_presential),
         p_service_hours: serializeServiceHours(serviceHours) as Json,
       })
+
+      // Se a RPC da v6 ainda não existe no banco, executa fallback para a v4/v5 existente
+      if (coverageError && (coverageError.code === '42883' || coverageError.code === 'PGRST202' || coverageError.message?.includes('save_profile_coverage_with_audiences'))) {
+        const fallbackRes = await db.rpc('save_profile_coverage', {
+          p_service_areas: serviceAreas.map((area) => ({
+            ibgeCode: area.ibge_code,
+            name: area.municipality_name,
+            stateCode: area.state_code,
+            isNational: area.is_national,
+            declaredNonPresential: area.declared_non_presential,
+            selectionOrder: area.selection_order,
+          })),
+          p_segments: orderedSegments.map((segment, selectionOrder) => ({
+            categoryId: segment.categoryId,
+            selectionOrder,
+            subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
+              subcategoryId,
+              selectionOrder: subcategoryOrder,
+            })),
+          })),
+          p_declared_non_presential: serviceAreas.some((area) => area.is_national && area.declared_non_presential),
+        })
+        coverageError = fallbackRes.error
+      }
       if (coverageError) throw coverageError
 
       const profileUpdates: Partial<Profile> = {
