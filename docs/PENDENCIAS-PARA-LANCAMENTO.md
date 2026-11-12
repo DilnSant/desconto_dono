@@ -88,9 +88,21 @@ Revisado em 08/11/2026. Base da revisão: HEAD `1f5ac6e` (`fix: valida selecao d
 - [x] Revalidação da produção: Auth `/settings` respondeu HTTP 200 com `mailer_autoconfirm=false`; a view pública `profiles_public` respondeu com contagem exata zero. `/empresas?stateCode=SC` entrega a sidebar e o estado vazio, confirmando que a conta de teste não está elegível para aparecer.
 - [ ] A entrega do e-mail de confirmação continua sem validação: `mailer_autoconfirm=false`, mas os logs e o SMTP do Supabase Auth não são acessíveis pela API pública. Conferir e configurar SMTP no painel Supabase; Resend da aplicação é separado.
 - [ ] O checkout foi publicado, mas não foi concluído um checkout autenticado de sandbox. Rotacionar a chave Sandbox e o token do webhook que apareceram em output de diagnóstico anterior, atualizar variáveis locais/Vercel, conferir webhook no painel Asaas e testar o ciclo completo antes de produção.
-- [ ] Restaurar, revisar e versionar `supabase/schema_v6.sql` antes de aplicá-la no Supabase. A migration e o código local associado ficaram no worktree do volume externo, que está desmontado; não estão neste `main` clonado. As colunas de público/horários ainda não existem remotamente, então essas opções não foram publicadas.
+- [x] Restaurado e versionado `supabase/schema_v6.sql` no repositório com suporte a horários de atendimento semanais e públicos comercial/residencial nos segmentos. Aplicação remota no SQL Editor do Supabase ainda pendente de execução manual.
 - [ ] A auditoria remota anterior encontrou o perfil de teste confirmado, porém inativo e sem nome comercial, categoria ou área; `profiles_public` estava vazio. O diretório publicado mostra estado vazio corretamente. Completar o perfil após a migration para que a empresa apareça.
 - [ ] Confirmar `NEXT_PUBLIC_APP_URL`/`VERCEL_URL`, `ASAAS_API_KEY` e `ASAAS_WEBHOOK_TOKEN` nos ambientes da Vercel e revisar os logs do checkout; não há acesso administrativo da Vercel neste ambiente.
+
+## Validação e Reconciliação (12/11/2026)
+
+- [x] Reconciliado `src/components/auth/RegisterForm.tsx`: restaurada a persistência de segmentos com audiências (`save_profile_coverage_with_audiences`), ativação do perfil após cadastro imediato, inicialização com `p_service_hours: null` e metadados de cadastro para confirmação por e-mail, preservando a navegação em memória com credenciais para login.
+- [x] Ajustado texto em `src/app/planos/page.tsx` para respeitar o contrato de termos sem promessas não suportadas (substituído termo que feria o contrato de ausência de destaques pagos).
+- [x] Versionado `.gitignore` com permissão explícita para `.env.example` e `.vscode/settings.json`.
+- [x] Verificações locais aprovadas:
+  - `npx tsc --noEmit`: 0 erros de tipagem.
+  - `npm run lint`: 0 erros e 0 avisos.
+  - `npm run build -- --webpack`: compilação e geração de 24 rotas estáticas e dinâmicas concluída com sucesso.
+  - Suíte de testes: **141/141 testes passaram** (100% de aprovação), englobando testes unitários, contratos estáticos e testes HTTP contra o servidor de produção local.
+- [x] Git sincronizado e preparado para push em `origin/main`.
 
 ## Referências
 

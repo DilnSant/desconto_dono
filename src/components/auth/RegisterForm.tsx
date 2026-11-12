@@ -116,6 +116,27 @@ export default function RegisterForm() {
     )
     if (!segmentResult.valid) { setError(segmentResult.errors.join(' ')); setStep(2); return }
 
+    const orderedSegments = [...segments.segments].sort(
+      (first, second) => Number(second.isPrimary) - Number(first.isPrimary),
+    )
+    const serviceAreas = [{
+      ibgeCode: municipality.ibgeCode,
+      name: municipality.name,
+      stateCode: municipality.stateCode,
+      isNational: false,
+      declaredNonPresential: false,
+      selectionOrder: 0,
+    }]
+    const selectedSegments = orderedSegments.map((segment, selectionOrder) => ({
+      categoryId: segment.categoryId,
+      serviceAudiences: segment.serviceAudiences,
+      selectionOrder,
+      subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
+        subcategoryId,
+        selectionOrder: subcategoryOrder,
+      })),
+    }))
+
     setLoading(true)
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
@@ -128,6 +149,15 @@ export default function RegisterForm() {
             city: municipality.name,
             state: municipality.stateCode,
             accepted_terms: true,
+            pending_profile_setup: {
+              business_name: form.business_name || null,
+              whatsapp: form.whatsapp || null,
+              website_url: form.website_url || null,
+              instagram_url: form.instagram_url || null,
+              service_areas: serviceAreas,
+              segments: selectedSegments,
+              declared_non_presential: false,
+            },
           },
         },
       })
@@ -159,24 +189,11 @@ export default function RegisterForm() {
         return
       }
 
-      const { error: coverageError } = await db.rpc('save_profile_coverage', {
-        p_service_areas: [{
-          ibgeCode: municipality.ibgeCode,
-          name: municipality.name,
-          stateCode: municipality.stateCode,
-          isNational: false,
-          declaredNonPresential: false,
-          selectionOrder: 0,
-        }],
-        p_segments: segments.segments.map((segment, selectionOrder) => ({
-          categoryId: segment.categoryId,
-          selectionOrder,
-          subcategories: segment.subcategoryIds.map((subcategoryId, subcategoryOrder) => ({
-            subcategoryId,
-            selectionOrder: subcategoryOrder,
-          })),
-        })),
+      const { error: coverageError } = await db.rpc('save_profile_coverage_with_audiences', {
+        p_service_areas: serviceAreas,
+        p_segments: selectedSegments,
         p_declared_non_presential: false,
+        p_service_hours: null,
       })
 
       if (coverageError) {
@@ -185,6 +202,21 @@ export default function RegisterForm() {
         setAccountCreated(true)
         return
       }
+
+      const { error: activationError } = await db.from('profiles')
+        .update({ is_active: true })
+        .eq('id', data.user.id)
+      if (activationError) {
+        console.error('[CADASTRO] Falha ao publicar o perfil após concluir o cadastro', activationError)
+        setError('A conta foi criada, mas o perfil não pôde ser publicado. Entre em Meu Perfil e tente salvar novamente.')
+        setAccountCreated(true)
+        return
+      }
+
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: { pending_profile_setup: null },
+      })
+      if (metadataError) console.error('[CADASTRO] Não foi possível limpar os dados temporários do cadastro', metadataError)
 
       router.push('/?cadastro=sucesso')
       router.refresh()

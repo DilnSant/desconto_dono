@@ -1,0 +1,9 @@
+{
+    "git.diagnosticsCommitHook.enabled": true,
+    "git.enableCommitSigning": true,
+    "git.postCommitCommand": "push",
+    "git.rememberPostCommitCommand": true,
+    "git.useCommitInputAsStashMessage": true,
+    "git.verboseCommit": true,
+    "git.autofetch": true
+}

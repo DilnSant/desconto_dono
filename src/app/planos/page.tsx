@@ -50,7 +50,7 @@ export default async function PlanosPage() {
         </div>
         <div className="border-l-4 border-yellow-400 bg-green-50 px-5 py-4 text-sm leading-relaxed text-green-950">
           <strong>100% da sua receita é sua:</strong> diferente de marketplaces que retêm de 15% a 27% por pedido,
-          aqui o cliente fala direto no seu WhatsApp ou balcão. Você só paga assinatura fixa se desejar mais destaque e ferramentas.
+          aqui o cliente fala direto no seu WhatsApp ou balcão. Você só paga assinatura fixa se desejar ampliar municípios, anúncios e recursos.
         </div>
       </header>
 
