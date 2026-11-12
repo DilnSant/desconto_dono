@@ -14,11 +14,6 @@ import { useCategoryCatalog } from '@/lib/categories/use-category-catalog'
 import { canCreateNewActiveListing, getCountableActiveListingCount } from '@/lib/plans/listing-limits'
 import { getPlanEntitlements, normalizeStoredPlanType, type PlanType } from '@/lib/plans/entitlements'
 
-function createListingImagePath(userId: string, fileName: string): string {
-  const extension = fileName.split('.').pop()
-  return `${userId}/${Date.now()}.${extension}`
-}
-
 export default function NovoAnuncioPage() {
   const router = useRouter()
   const imageInputRef = useRef<HTMLInputElement>(null)
@@ -138,13 +133,18 @@ export default function NovoAnuncioPage() {
 
       let image_url: string | null = null
       if (imageFile) {
-        const path = createListingImagePath(user.id, imageFile.name)
-        const { error: uploadError } = await supabase.storage
-          .from('listings')
-          .upload(path, imageFile, { upsert: true })
-        if (uploadError) throw uploadError
-        const { data } = supabase.storage.from('listings').getPublicUrl(path)
-        image_url = data.publicUrl
+        const formData = new FormData()
+        formData.append('file', imageFile)
+        formData.append('bucket', 'listings')
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        })
+        const uploadData = await uploadRes.json()
+        if (!uploadRes.ok || !uploadData.publicUrl) {
+          throw new Error(uploadData.error || 'Não foi possível enviar a imagem do anúncio.')
+        }
+        image_url = uploadData.publicUrl
       }
 
       const { data: listing, error: insertError } = await db

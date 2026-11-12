@@ -288,7 +288,7 @@ export default async function PublicProfilePage({ params }: Props) {
                   <div key={day.key} className="flex justify-between gap-4 rounded-lg bg-gray-50 px-3 py-2">
                     <dt className="font-medium text-gray-700">{day.label}</dt>
                     <dd className="text-gray-600">
-                      {day.closed ? 'Fechado' : `${day.open}–${day.close}`}
+                      {day.closed ? 'Fechado' : day.allDay ? 'Aberto 24 horas' : `${day.open}–${day.close}`}
                     </dd>
                   </div>
                 ))}

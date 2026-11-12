@@ -21,15 +21,19 @@ async function createHandlers() {
   return createProfileGalleryHandlers({
     supabaseUrl,
     async authenticate() {
-      const { data: { user }, error } = await server.auth.getUser()
-      if (error?.name === 'AuthSessionMissingError') return null
-      if (error) throw error
-      return user?.id ?? null
+      try {
+        const { data: { user }, error } = await server.auth.getUser()
+        if (error?.name === 'AuthSessionMissingError') return null
+        if (error) return null
+        return user?.id ?? null
+      } catch {
+        return null
+      }
     },
     async getOwnerMedia(profileId) {
       const admin = getAdmin()
       const [profileResult, imagesResult, planResult] = await Promise.all([
-        admin.from('profiles').select('cover_url').eq('id', profileId).maybeSingle(),
+        admin.from('profiles').select('cover_url, plan_type').eq('id', profileId).maybeSingle(),
         admin
           .from('profile_gallery_images')
           .select('id, object_path, display_order, upload_status, is_active')
@@ -41,13 +45,24 @@ async function createHandlers() {
 
       if (profileResult.error) throw profileResult.error
       if (imagesResult.error) throw imagesResult.error
-      if (planResult.error) throw planResult.error
-      if (!profileResult.data) return null
+
+      const profileData = profileResult.data
+      if (!profileData) {
+        return {
+          plan: 'Gratuito' as const,
+          coverUrl: null,
+          images: [],
+        }
+      }
+
+      const rawPlan = (!planResult.error && typeof planResult.data === 'string')
+        ? planResult.data
+        : (profileData.plan_type || 'Gratuito')
 
       return {
-        plan: normalizeStoredPlanType(String(planResult.data)),
-        coverUrl: profileResult.data.cover_url,
-        images: imagesResult.data,
+        plan: normalizeStoredPlanType(rawPlan),
+        coverUrl: profileData.cover_url,
+        images: imagesResult.data ?? [],
       }
     },
     async reserveSlot(profileId, objectPath, displayOrder) {
@@ -147,13 +162,16 @@ async function createHandlers() {
       if (error) throw error
     },
     async signObjectPath(path) {
-      const admin = getAdmin()
-      const { data, error } = await admin.storage
-        .from('covers')
-        .createSignedUrl(path, SIGNED_URL_LIFETIME_SECONDS)
-      if (error) throw error
-      if (!data.signedUrl) throw new Error('O Supabase não retornou uma URL temporária.')
-      return data.signedUrl
+      try {
+        const admin = getAdmin()
+        const { data, error } = await admin.storage
+          .from('covers')
+          .createSignedUrl(path, SIGNED_URL_LIFETIME_SECONDS)
+        if (error || !data?.signedUrl) return ''
+        return data.signedUrl
+      } catch {
+        return ''
+      }
     },
     async getPublicProfile(profileId) {
       const admin = getAdmin()

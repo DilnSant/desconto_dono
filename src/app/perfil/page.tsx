@@ -194,12 +194,18 @@ export default function PerfilPage() {
     setAvatarPreview(url)
   }
 
-  const uploadImage = async (file: File, bucket: string, userId: string): Promise<string> => {
-    const ext = file.name.split('.').pop()
-    const path = `${userId}/${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
-    if (error) throw new Error('PROFILE_IMAGE_UPLOAD_FAILED')
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+  const uploadImage = async (file: File, bucket: string): Promise<string> => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('bucket', bucket)
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await res.json()
+    if (!res.ok || !data.publicUrl) {
+      throw new Error(data.error || 'PROFILE_IMAGE_UPLOAD_FAILED')
+    }
     return data.publicUrl
   }
 
@@ -236,7 +242,7 @@ export default function PerfilPage() {
 
       let avatar_url = profile?.avatar_url ?? null
       try {
-        if (avatarFile) avatar_url = await uploadImage(avatarFile, 'avatars', user.id)
+        if (avatarFile) avatar_url = await uploadImage(avatarFile, 'avatars')
       } catch (uploadError) {
         if (uploadError instanceof Error && uploadError.message === 'PROFILE_IMAGE_UPLOAD_FAILED') {
           throw new Error('PROFILE_IMAGE_UPLOAD_FAILED')
@@ -472,47 +478,73 @@ export default function PerfilPage() {
           <p className="text-sm text-gray-500">
             Informe seus horários por dia. Esses dados aparecem somente no perfil público.
           </p>
-          <div className="space-y-3">
+          <div className="space-y-1.5">
             {SERVICE_HOUR_DAYS.map(({ key, label }) => {
               const day = serviceHours[key]
+              const is24h = Boolean(day.allDay)
+              const isClosed = Boolean(day.closed)
+              const inputsDisabled = isClosed || is24h
+
               return (
-                <div key={key} className="grid grid-cols-1 gap-3 rounded-xl border border-gray-100 p-3 sm:grid-cols-[minmax(130px,1fr)_1fr_1fr_auto] sm:items-center">
-                  <span className="text-sm font-semibold text-gray-700">{label}</span>
-                  <label className="text-xs text-gray-500">
-                    Abertura
+                <div key={key} className="grid grid-cols-1 gap-2 rounded-xl border border-gray-100 py-1.5 px-3 sm:grid-cols-[120px_1fr_1fr_auto_auto] sm:items-center sm:gap-3">
+                  <span className="text-xs font-semibold text-gray-700">{label}</span>
+                  <label className="text-[11px] text-gray-500 flex items-center gap-1.5">
+                    <span className="shrink-0">Abre:</span>
                     <input
                       type="time"
-                      value={day.open}
-                      disabled={day.closed}
+                      value={is24h ? '00:00' : day.open}
+                      disabled={inputsDisabled}
                       onChange={(event) => setServiceHours((current) => ({
                         ...current,
                         [key]: { ...current[key], open: event.target.value },
                       }))}
-                      className="input-field mt-1 disabled:bg-gray-50 disabled:text-gray-400"
+                      className="w-full h-8 px-2 py-0.5 text-xs rounded-lg border border-gray-200 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                     />
                   </label>
-                  <label className="text-xs text-gray-500">
-                    Fechamento
+                  <label className="text-[11px] text-gray-500 flex items-center gap-1.5">
+                    <span className="shrink-0">Fecha:</span>
                     <input
                       type="time"
-                      value={day.close}
-                      disabled={day.closed}
+                      value={is24h ? '23:59' : day.close}
+                      disabled={inputsDisabled}
                       onChange={(event) => setServiceHours((current) => ({
                         ...current,
                         [key]: { ...current[key], close: event.target.value },
                       }))}
-                      className="input-field mt-1 disabled:bg-gray-50 disabled:text-gray-400"
+                      className="w-full h-8 px-2 py-0.5 text-xs rounded-lg border border-gray-200 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                     />
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-gray-600 sm:pt-4">
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={day.closed}
+                      checked={is24h}
                       onChange={(event) => setServiceHours((current) => ({
                         ...current,
-                        [key]: { ...current[key], closed: event.target.checked },
+                        [key]: {
+                          ...current[key],
+                          allDay: event.target.checked,
+                          closed: event.target.checked ? false : current[key].closed,
+                          open: event.target.checked ? '00:00' : current[key].open,
+                          close: event.target.checked ? '23:59' : current[key].close,
+                        },
                       }))}
-                      className="h-4 w-4 accent-green-700"
+                      className="h-3.5 w-3.5 accent-yellow-500"
+                    />
+                    24hs
+                  </label>
+                  <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isClosed}
+                      onChange={(event) => setServiceHours((current) => ({
+                        ...current,
+                        [key]: {
+                          ...current[key],
+                          closed: event.target.checked,
+                          allDay: event.target.checked ? false : current[key].allDay,
+                        },
+                      }))}
+                      className="h-3.5 w-3.5 accent-green-700"
                     />
                     Fechado
                   </label>

@@ -44,6 +44,22 @@ test('saves weekly hours and publishes only configured or explicitly closed days
   ])
 })
 
+test('saves and publishes 24-hour service days correctly', () => {
+  const hours = createEmptyServiceHours()
+  hours.friday = { open: '00:00', close: '23:59', closed: false, allDay: true }
+  assert.equal(validateServiceHours(hours), null)
+
+  const stored = serializeServiceHours(hours)
+  assert.deepEqual(stored, {
+    friday: { allDay: true, open: '00:00', close: '23:59', closed: false },
+  })
+
+  const publicHours = getPublicServiceHours(stored)
+  assert.deepEqual(publicHours, [
+    { key: 'friday', label: 'Sexta-feira', open: '00:00', close: '23:59', closed: false, allDay: true },
+  ])
+})
+
 test('database migration persists both fields and adds them to the public profile projection', async () => {
   const migration = await readFile(new URL('../supabase/schema_v6.sql', import.meta.url), 'utf8')
   assert.match(migration, /service_audiences text\[\][\s\S]*?DEFAULT ARRAY\['commercial', 'residential'\]/)

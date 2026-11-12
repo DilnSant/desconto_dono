@@ -325,20 +325,32 @@ export function createProfileGalleryHandlers(dependencies: GalleryRouteDependenc
         const publicIds = new Set(
           getPublicGallery(safeImages, media.plan, Boolean(coverPath)).map(({ id }) => id),
         )
-        const cover = coverPath
-          ? await dependencies.signObjectPath(coverPath)
-          : null
-        const images = await Promise.all(media.images.map(async (image) => ({
-          id: image.id,
-          url: image.upload_status === 'ready'
-            && isProfileObjectPath(profileId, image.object_path)
-            ? await dependencies.signObjectPath(image.object_path)
-            : null,
-          displayOrder: image.display_order,
-          isActive: image.is_active,
-          uploadStatus: image.upload_status,
-          isPublic: publicIds.has(image.id),
-        })))
+        let cover: string | null = null
+        if (coverPath) {
+          try {
+            cover = await dependencies.signObjectPath(coverPath)
+          } catch {
+            cover = null
+          }
+        }
+        const images = await Promise.all(media.images.map(async (image) => {
+          let url: string | null = null
+          if (image.upload_status === 'ready' && isProfileObjectPath(profileId, image.object_path)) {
+            try {
+              url = await dependencies.signObjectPath(image.object_path)
+            } catch {
+              url = null
+            }
+          }
+          return {
+            id: image.id,
+            url,
+            displayOrder: image.display_order,
+            isActive: image.is_active,
+            uploadStatus: image.upload_status,
+            isPublic: publicIds.has(image.id),
+          }
+        }))
 
         return jsonResponse({
           plan: media.plan,
