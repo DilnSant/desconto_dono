@@ -327,11 +327,21 @@ export default function PerfilPage() {
       }
       setSuccess(true)
       setTimeout(() => setSuccess(false), 3000)
-    } catch (saveError) {
+    } catch (saveError: unknown) {
       console.error('Falha ao salvar:', saveError)
-      setError(saveError instanceof Error && saveError.message === 'PROFILE_IMAGE_UPLOAD_FAILED'
-        ? 'Não foi possível enviar a imagem. Tente novamente.'
-        : 'Não foi possível salvar o perfil.')
+      const errorMsg =
+        typeof saveError === 'object' && saveError !== null && 'message' in saveError && typeof (saveError as { message: unknown }).message === 'string'
+          ? (saveError as { message: string }).message
+          : saveError instanceof Error
+            ? saveError.message
+            : ''
+      setError(
+        errorMsg === 'PROFILE_IMAGE_UPLOAD_FAILED'
+          ? 'Não foi possível enviar a imagem. Tente novamente.'
+          : errorMsg
+            ? `Não foi possível salvar o perfil: ${errorMsg}`
+            : 'Não foi possível salvar o perfil.'
+      )
     } finally {
       setSaving(false)
     }

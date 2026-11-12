@@ -17,8 +17,9 @@ export const metadata: Metadata = {
 
 
 export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
-  const { erro } = await searchParams
+  const { erro, detalhes } = await searchParams
   const errorCode = Array.isArray(erro) ? erro[0] : erro
+  const errorDetails = Array.isArray(detalhes) ? detalhes[0] : detalhes
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -61,7 +62,11 @@ export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
       <div className="flex-1 lg:max-w-[520px] flex items-center justify-center px-4 py-12 bg-gray-50">
         <LoginForm
           initialError={
-            errorCode === 'oauth' ? 'Falha ao autenticar com Google. Tente novamente.' : ''
+            errorCode === 'oauth'
+              ? errorDetails
+                ? `Falha ao autenticar com Google: ${errorDetails}`
+                : 'Falha ao autenticar com Google. Tente novamente.'
+              : ''
           }
         />
       </div>

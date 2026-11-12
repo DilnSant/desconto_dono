@@ -9,11 +9,22 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/'
+  const authError = searchParams.get('error')
+  const authErrorDesc = searchParams.get('error_description')
+
+  if (authError || authErrorDesc) {
+    console.error('[AUTH CALLBACK] Erro retornado pelo provedor:', authError, authErrorDesc)
+    return NextResponse.redirect(`${origin}/login?erro=oauth&detalhes=${encodeURIComponent(authErrorDesc || authError || '')}`)
+  }
 
   if (code) {
     const supabase = await createSupabaseServerDb()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    if (error) {
+      console.error('[AUTH CALLBACK] Erro ao trocar código por sessão:', error.message)
+      return NextResponse.redirect(`${origin}/login?erro=oauth&detalhes=${encodeURIComponent(error.message)}`)
+    }
+    if (data.session) {
       const user = data.user
       const pendingSetup = user?.user_metadata?.pending_profile_setup
       if (user && isRecord(pendingSetup)) {

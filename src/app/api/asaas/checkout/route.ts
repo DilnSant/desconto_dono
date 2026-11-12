@@ -163,9 +163,14 @@ export async function POST(request: Request) {
   } catch (err) {
     if (err instanceof AsaasApiError) {
       console.error('[CHECKOUT] Erro do provedor:', { stage, status: err.status, codes: err.codes })
-    } else {
-      console.error('[CHECKOUT] Erro inesperado:', { stage, errorName: err instanceof Error ? err.name : 'UnknownError' })
+      return NextResponse.json({ error: 'Erro no provedor de pagamento. Verifique as configurações do Asaas.' }, { status: 502 })
     }
-    return NextResponse.json({ error: 'Erro interno do servidor.' }, { status: 500 })
+    const message = err instanceof Error ? err.message : 'Erro interno do servidor.'
+    console.error('[CHECKOUT] Erro inesperado:', { stage, message })
+    const isConfigError = message.includes('environment variables') || message.includes('configured')
+    return NextResponse.json(
+      { error: isConfigError ? `Configuração pendente: ${message}` : 'Erro interno do servidor.' },
+      { status: 500 }
+    )
   }
 }
