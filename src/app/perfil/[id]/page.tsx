@@ -70,19 +70,11 @@ export default async function PublicProfilePage({ params }: Props) {
   const supabase = await getServerDb()
 
   const fetchPublicProfile = async () => {
-    let res = await supabase
+    return await supabase
       .from('profiles_public')
-      .select('id, full_name, business_name, bio, city, state, avatar_url, category_id, category_name, subcategory_id, subcategory_name, is_verified, plan_type, email_public, public_whatsapp, website_url, instagram_url, tiktok_url, created_at, segment_ids, subcategory_ids, service_area_ibge_codes, service_area_state_codes, service_area_names, national_coverage, service_hours, service_segments')
+      .select('*')
       .eq('id', id)
       .maybeSingle()
-    if (res.error && (res.error.code === '42703' || res.error.message?.includes('service_hours'))) {
-      res = await supabase
-        .from('profiles_public')
-        .select('id, full_name, business_name, bio, city, state, avatar_url, category_id, category_name, subcategory_id, subcategory_name, is_verified, plan_type, email_public, public_whatsapp, website_url, instagram_url, tiktok_url, created_at, segment_ids, subcategory_ids, service_area_ibge_codes, service_area_state_codes, service_area_names, national_coverage')
-        .eq('id', id)
-        .maybeSingle()
-    }
-    return res
   }
 
   const [profileResult, listingsResult] = await Promise.all([

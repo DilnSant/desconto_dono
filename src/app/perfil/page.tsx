@@ -82,23 +82,19 @@ export default function PerfilPage() {
         if (authError) throw authError
         if (!user) { router.replace('/login'); return }
 
-        const fetchSegments = async () => {
-          const res = await db.from('profile_categories')
-            .select('id, category_id, selection_order, service_audiences')
-            .eq('profile_id', user.id)
-            .order('selection_order')
-          if (res.error && (res.error.code === '42703' || res.error.message?.includes('service_audiences'))) {
-            return db.from('profile_categories')
-              .select('id, category_id, selection_order')
-              .eq('profile_id', user.id)
-              .order('selection_order')
+        const fetchPlan = async () => {
+          try {
+            const res = await db.rpc('get_effective_plan', { p_profile_id: user.id })
+            if (res.error) return { data: null, error: null }
+            return res
+          } catch {
+            return { data: null, error: null }
           }
-          return res
         }
 
         const [profileResult, segmentResult, subcategoryResult, serviceAreaResult, planResult] = await Promise.all([
           db.from('profiles').select('*').eq('id', user.id).maybeSingle(),
-          fetchSegments(),
+          db.from('profile_categories').select('*').eq('profile_id', user.id).order('selection_order'),
           db.from('profile_subcategories')
             .select('profile_category_id, subcategory_id, selection_order')
             .order('selection_order'),
@@ -106,8 +102,7 @@ export default function PerfilPage() {
             .select('ibge_code, municipality_name, state_code, is_national, declared_non_presential, selection_order')
             .eq('profile_id', user.id)
             .order('selection_order'),
-          // RPC disponível após migration — captura falha sem bloquear o carregamento
-          db.rpc('get_effective_plan', { p_profile_id: user.id }).catch(() => ({ data: null, error: null })),
+          fetchPlan(),
         ])
 
         if (profileResult.error) throw profileResult.error
@@ -183,7 +178,8 @@ export default function PerfilPage() {
         })
       } catch (loadError) {
         console.error('Falha ao carregar perfil:', loadError)
-        if (!cancelled) setError('Não foi possível carregar seu perfil. Tente novamente.')
+        const msg = loadError instanceof Error ? loadError.message : String(loadError)
+        if (!cancelled) setError(`Não foi possível carregar seu perfil (${msg}). Tente novamente.`)
       } finally {
         if (!cancelled) setLoading(false)
       }
